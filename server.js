@@ -22,7 +22,7 @@ const sendToWebSocket = (ws, data) => {
 app.post('/webhook', async (req, res) => {
   const { symbol, call } = req.body; // TradingView sends the ticker and call ('call' or 'put')
   console.log(req.body);
-  console.log( 'frx' + req.body);
+  console.log( 'frx' + req.body.symbol);
 
   if (!symbol || !call) {
     return res.status(400).send('Invalid webhook payload');
