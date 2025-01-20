@@ -45,6 +45,7 @@ app.post('/webhook', async (req, res) => {
 
   ws.on('message', (data) => {
     const response = JSON.parse(data);
+    console.log('I was run');
     
 
     if (response.msg_type === 'authorize') {
