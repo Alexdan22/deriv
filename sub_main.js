@@ -54,7 +54,7 @@ ws.on('message', (data) => {
       });
     } else {
       console.log('No ongoing trades. Ready to place a new trade.');
-      subscribeToTicks('R_100'); // Start listening for ticks
+      subscribeToTicks('frxAUDUSD'); // Start listening for ticks
     }
   }
 
@@ -62,7 +62,7 @@ ws.on('message', (data) => {
     const tick = response.tick;
     console.log(`Tick: ${tick.symbol} | Price: ${tick.quote}`);
     // Trade condition
-    if (tick.quote > 1670) {
+    if (tick.quote > 0.5) {
       console.log('Condition met. Placing trade...');
       
       console.log(`Tick: ${tick.symbol} | Price: ${tick.quote}`);
@@ -79,14 +79,14 @@ ws.on('message', (data) => {
           currency: 'USD',
           duration: 1,  // 1-minute trade duration
           duration_unit: 'm',
-          symbol: 'R_100',
+          symbol: 'frxAUDUSD',
         },
       });
     }
   }
 
   else if (response.msg_type === 'buy') {
-    console.log('Trade placed successfully:', response.buy);
+    console.log('Trade placed successfully:', response);
 
     if (response.buy && response.buy.contract_id) {
       currentContractId = response.buy.contract_id;

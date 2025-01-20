@@ -145,8 +145,8 @@ const placeTrade = (ws, symbol, call, stake) => {
       basis: 'stake',
       contract_type: contractType,
       currency: 'USD',
-      duration: 15,
-      duration_unit: 'm',
+      duration: 1,
+      duration_unit: 'd',
       symbol: 'frx' + symbol,
     },
   });
