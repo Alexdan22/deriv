@@ -58,16 +58,21 @@ app.post('/webhook', async (req, res) => {
 
   isTrading = true;
 
-  // Connect to Deriv WebSocket
   const ws = new WebSocket(WEBSOCKET_URL);
+  let responseSent = false; // Flag to track if response is sent
+
+  const sendErrorResponse = (errorMessage) => {
+    if (!responseSent) {
+      res.status(400).send(errorMessage);
+      responseSent = true;
+    }
+    resetTradingState(ws);
+  };
 
   ws.on('open', async () => {
     console.log('Connected to Deriv API.');
-
-    // Authorize the connection
     sendToWebSocket(ws, { authorize: API_TOKEN });
 
-    // Wait for authorization and fetch supported durations
     ws.on('message', async (data) => {
       const response = JSON.parse(data);
 
@@ -84,74 +89,50 @@ app.post('/webhook', async (req, res) => {
 
           if (!is1mSupported) {
             console.log('1-minute duration is not supported for this asset.');
-            resetTradingState(ws);
-            return res
-              .status(400)
-              .send('1-minute duration not supported for this asset.');
+            sendErrorResponse('1-minute duration not supported for this asset.');
+            return;
           }
 
           console.log('1-minute duration supported. Placing initial trade...');
           placeTrade(ws, symbol, call, stake);
+
+          if (!responseSent) {
+            res.status(200).send('Trade initiated successfully.');
+            responseSent = true;
+          }
         } catch (error) {
           console.error('Error fetching supported durations:', error);
-          resetTradingState(ws);
-          res.status(500).send('Failed to fetch supported durations.');
+          sendErrorResponse('Failed to fetch supported durations.');
         }
       }
 
       if (response.msg_type === 'buy') {
         if (response.error) {
           console.error('Error placing trade:', response.error.message);
-
-          // Handle specific error scenarios
-          if (response.error.code === 'ContractCreationFailure') {
-            console.log('Trading is not offered for this asset. Resetting state.');
-          }
-          resetTradingState(ws);
+          sendErrorResponse('Error placing trade: ' + response.error.message);
         } else {
           console.log('Trade placed successfully:', response.buy);
         }
       }
 
-      if (response.msg_type === 'proposal_open_contract') {
-        const contract = response.proposal_open_contract;
-
-        if (contract.status !== 'open') {
-          if (contract.profit > 0) {
-            console.log('Trade won. Returning to idle state.');
-            resetTradingState(ws);
-          } else {
-            console.log('Trade lost. Entering Martingale strategy...');
-            martingaleStep++;
-            if (martingaleStep <= maxMartingaleSteps) {
-              stake *= 2; // Double the stake for Martingale
-              placeTrade(ws, symbol, call, stake);
-            } else {
-              console.log('Martingale steps completed. Returning to idle state.');
-              resetTradingState(ws);
-            }
-          }
-        }
-      }
-
       if (response.msg_type === 'error') {
         console.error('Error:', response.error.message);
-        resetTradingState(ws);
+        sendErrorResponse('Error: ' + response.error.message);
       }
     });
   });
 
   ws.on('close', () => {
     console.log('WebSocket connection closed.');
+    resetTradingState(ws);
   });
 
   ws.on('error', (error) => {
     console.error('WebSocket error:', error);
-    resetTradingState(ws);
+    sendErrorResponse('WebSocket error: ' + error.message);
   });
-
-  res.status(200).send('Webhook received and trade initiated.');
 });
+
 
 // Function to place a trade
 const placeTrade = (ws, symbol, call, stake) => {
