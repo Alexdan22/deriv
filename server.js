@@ -13,6 +13,37 @@ let martingaleStep = 0;
 const maxMartingaleSteps = 2; // Maximum steps in the Martingale strategy
 let stake = 10; // Initial stake amount
 
+// Forex symbol mapping
+const deriveSymbolMap = {
+  frxAUDCAD: 'AUD/CAD',
+  frxAUDCHF: 'AUD/CHF',
+  frxAUDJPY: 'AUD/JPY',
+  frxAUDNZD: 'AUD/NZD',
+  frxAUDUSD: 'AUD/USD',
+  frxEURAUD: 'EUR/AUD',
+  frxEURCAD: 'EUR/CAD',
+  frxEURCHF: 'EUR/CHF',
+  frxEURGBP: 'EUR/GBP',
+  frxEURJPY: 'EUR/JPY',
+  frxEURNZD: 'EUR/NZD',
+  frxEURUSD: 'EUR/USD',
+  frxGBPAUD: 'GBP/AUD',
+  frxGBPCAD: 'GBP/CAD',
+  frxGBPCHF: 'GBP/CHF',
+  frxGBPJPY: 'GBP/JPY',
+  frxGBPNOK: 'GBP/NOK',
+  frxGBPNZD: 'GBP/NZD',
+  frxGBPUSD: 'GBP/USD',
+  frxNZDJPY: 'NZD/JPY',
+  frxNZDUSD: 'NZD/USD',
+  frxUSDCAD: 'USD/CAD',
+  frxUSDCHF: 'USD/CHF',
+  frxUSDJPY: 'USD/JPY',
+  frxUSDNOK: 'USD/NOK',
+  frxUSDPLN: 'USD/PLN',
+  frxUSDSEK: 'USD/SEK',
+};
+
 // Function to send data to WebSocket
 const sendToWebSocket = (ws, data) => {
   ws.send(JSON.stringify(data));
@@ -20,11 +51,16 @@ const sendToWebSocket = (ws, data) => {
 
 // Webhook listener for TradingView alerts
 app.post('/webhook', async (req, res) => {
-  const { symbol, call } = req.body; // TradingView sends the ticker and call ('call' or 'put')
+  const { symbol, call } = req.body; // TradingView sends the symbol and call ('up' or 'down')
   console.log(req.body);
 
   if (!symbol || !call) {
     return res.status(400).send('Invalid webhook payload');
+  }
+
+  if (!deriveSymbolMap[symbol]) {
+    console.log(`Invalid or unsupported symbol: ${symbol}`);
+    return res.status(400).send('Non-tradeable or unsupported asset');
   }
 
   console.log(`Received alert for ${symbol} - Call: ${call}`);
@@ -40,8 +76,6 @@ app.post('/webhook', async (req, res) => {
 
   ws.on('open', () => {
     console.log('Connected to Deriv API.');
-
-    // Authorize the connection
     sendToWebSocket(ws, { authorize: API_TOKEN });
   });
 
@@ -56,11 +90,6 @@ app.post('/webhook', async (req, res) => {
     if (response.msg_type === 'buy') {
       if (response.error) {
         console.error('Error placing trade:', response.error.message);
-
-        // Handle specific error scenarios
-        if (response.error.code === 'ContractCreationFailure') {
-          console.log('Trading is not offered for this asset. Resetting state.');
-        }
         resetTradingState(ws);
       } else {
         console.log('Trade placed successfully:', response.buy);
@@ -68,8 +97,7 @@ app.post('/webhook', async (req, res) => {
     }
 
     if (response.msg_type === 'proposal_open_contract') {
-      const contract = response.proposal_open_contract;
-
+      const { contract } = response.proposal_open_contract;
       if (contract.status !== 'open') {
         if (contract.profit > 0) {
           console.log('Trade won. Returning to idle state.');
@@ -108,7 +136,7 @@ app.post('/webhook', async (req, res) => {
 
 // Function to place a trade
 const placeTrade = (ws, symbol, call, stake) => {
-  const contractType = call === 'call' ? 'CALL' : 'PUT'; // Determine contract type based on call
+  const contractType = call === 'up' ? 'CALL' : 'PUT'; // Determine contract type based on call
   sendToWebSocket(ws, {
     buy: 1,
     price: stake, // Stake amount
@@ -129,9 +157,7 @@ const resetTradingState = (ws) => {
   isTrading = false;
   martingaleStep = 0;
   stake = 10; // Reset stake to initial value
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.close();
-  }
+  ws.close();
 };
 
 // Start the server
