@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
 
-const API_TOKEN = 'zIQzxBhBpPnileS';
+const API_TOKEN = 'VX41WSwVGQDET3r';
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 
 const app = express();
