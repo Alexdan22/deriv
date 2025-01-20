@@ -15,27 +15,21 @@ let stake = 10; // Initial stake amount
 
 // Function to send data to WebSocket
 const sendToWebSocket = (ws, data) => {
-  try {
-    ws.send(JSON.stringify(data));
-    console.log('Sent to WebSocket:', data);
-  } catch (err) {
-    console.error('Error sending data to WebSocket:', err);
-  }
+  ws.send(JSON.stringify(data));
 };
 
 // Webhook listener for TradingView alerts
 app.post('/webhook', async (req, res) => {
-  const ticker = req.body.symbol;
-  const call = req.body.call // TradingView sends the ticker and call ('up' or 'down')
-  console.log('Webhook Payload:', req.body);
+  const { symbol, call } = req.body; // TradingView sends the ticker and call ('call' or 'put')
+  console.log(req.body);
 
-  if (!ticker || !call) {
-    console.error('Invalid webhook payload. Missing "ticker" or "call".');
+  if (!symbol || !call) {
     return res.status(400).send('Invalid webhook payload');
   }
 
+  console.log(`Received alert for ${symbol} - Call: ${call}`);
+
   if (isTrading) {
-    console.log('Already trading. Ignoring new alert.');
     return res.status(200).send('Already trading. Ignoring new alert.');
   }
 
@@ -46,29 +40,38 @@ app.post('/webhook', async (req, res) => {
 
   ws.on('open', () => {
     console.log('Connected to Deriv API.');
+
+    // Authorize the connection
     sendToWebSocket(ws, { authorize: API_TOKEN });
   });
 
   ws.on('message', (data) => {
     const response = JSON.parse(data);
-    console.log('Response:', response);
 
     if (response.msg_type === 'authorize') {
       console.log('Authorized. Placing initial trade...');
-      placeTrade(ws, ticker, call, stake);
+      placeTrade(ws, symbol, call, stake);
     }
 
     if (response.msg_type === 'buy') {
-      console.log('Trade placed successfully:', response.buy);
+      if (response.error) {
+        console.error('Error placing trade:', response.error.message);
+
+        // Handle specific error scenarios
+        if (response.error.code === 'ContractCreationFailure') {
+          console.log('Trading is not offered for this asset. Resetting state.');
+        }
+        resetTradingState(ws);
+      } else {
+        console.log('Trade placed successfully:', response.buy);
+      }
     }
 
     if (response.msg_type === 'proposal_open_contract') {
-      const { status, profit } = response.proposal_open_contract;
-      console.log('Contract Update:', response.proposal_open_contract);
+      const contract = response.proposal_open_contract;
 
-      if (status !== 'open') {
-        console.log(`Trade ${status}. Profit: ${profit}`);
-        if (profit > 0) {
+      if (contract.status !== 'open') {
+        if (contract.profit > 0) {
           console.log('Trade won. Returning to idle state.');
           resetTradingState(ws);
         } else {
@@ -76,7 +79,7 @@ app.post('/webhook', async (req, res) => {
           martingaleStep++;
           if (martingaleStep <= maxMartingaleSteps) {
             stake *= 2; // Double the stake for Martingale
-            placeTrade(ws, ticker, call, stake);
+            placeTrade(ws, symbol, call, stake);
           } else {
             console.log('Martingale steps completed. Returning to idle state.');
             resetTradingState(ws);
@@ -104,8 +107,8 @@ app.post('/webhook', async (req, res) => {
 });
 
 // Function to place a trade
-const placeTrade = (ws, ticker, call, stake) => {
-  const contractType = call === 'up' ? 'CALL' : 'PUT'; // Determine contract type based on call
+const placeTrade = (ws, symbol, call, stake) => {
+  const contractType = call === 'call' ? 'CALL' : 'PUT'; // Determine contract type based on call
   sendToWebSocket(ws, {
     buy: 1,
     price: stake, // Stake amount
@@ -116,10 +119,9 @@ const placeTrade = (ws, ticker, call, stake) => {
       currency: 'USD',
       duration: 1,
       duration_unit: 'm',
-      symbol: ticker,
+      symbol: symbol,
     },
   });
-  console.log(`Trade initiated: ${contractType} on ${ticker} with stake ${stake}`);
 };
 
 // Function to reset the trading state
@@ -127,14 +129,9 @@ const resetTradingState = (ws) => {
   isTrading = false;
   martingaleStep = 0;
   stake = 10; // Reset stake to initial value
-  try {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.close();
-    }
-  } catch (err) {
-    console.error('Error closing WebSocket:', err);
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.close();
   }
-  console.log('Trading state reset. Ready for the next trade.');
 };
 
 // Start the server
