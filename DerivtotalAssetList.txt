@@ -1,0 +1,85 @@
+Tradeable Assets List:
+Symbol: WLDAUD, Display Name: AUD Basket, Market: Derived
+Symbol: frxAUDCAD, Display Name: AUD/CAD, Market: Forex
+Symbol: frxAUDCHF, Display Name: AUD/CHF, Market: Forex
+Symbol: frxAUDJPY, Display Name: AUD/JPY, Market: Forex
+Symbol: frxAUDNZD, Display Name: AUD/NZD, Market: Forex
+Symbol: frxAUDUSD, Display Name: AUD/USD, Market: Forex
+Symbol: OTC_AS51, Display Name: Australia 200, Market: Stock Indices
+Symbol: cryBTCUSD, Display Name: BTC/USD, Market: Cryptocurrencies
+Symbol: RDBEAR, Display Name: Bear Market Index, Market: Derived
+Symbol: BOOM300N, Display Name: Boom 300 Index, Market: Derived
+Symbol: BOOM500, Display Name: Boom 500 Index, Market: Derived
+Symbol: BOOM600, Display Name: Boom 600 Index, Market: Derived
+Symbol: BOOM900, Display Name: Boom 900 Index, Market: Derived
+Symbol: BOOM1000, Display Name: Boom 1000 Index, Market: Derived
+Symbol: RDBULL, Display Name: Bull Market Index, Market: Derived
+Symbol: CRASH300N, Display Name: Crash 300 Index, Market: Derived
+Symbol: CRASH500, Display Name: Crash 500 Index, Market: Derived
+Symbol: CRASH600, Display Name: Crash 600 Index, Market: Derived
+Symbol: CRASH900, Display Name: Crash 900 Index, Market: Derived
+Symbol: CRASH1000, Display Name: Crash 1000 Index, Market: Derived
+Symbol: cryETHUSD, Display Name: ETH/USD, Market: Cryptocurrencies
+Symbol: WLDEUR, Display Name: EUR Basket, Market: Derived
+Symbol: frxEURAUD, Display Name: EUR/AUD, Market: Forex
+Symbol: frxEURCAD, Display Name: EUR/CAD, Market: Forex
+Symbol: frxEURCHF, Display Name: EUR/CHF, Market: Forex
+Symbol: frxEURGBP, Display Name: EUR/GBP, Market: Forex
+Symbol: frxEURJPY, Display Name: EUR/JPY, Market: Forex
+Symbol: frxEURNZD, Display Name: EUR/NZD, Market: Forex
+Symbol: frxEURUSD, Display Name: EUR/USD, Market: Forex
+Symbol: OTC_SX5E, Display Name: Euro 50, Market: Stock Indices
+Symbol: OTC_FCHI, Display Name: France 40, Market: Stock Indices
+Symbol: WLDGBP, Display Name: GBP Basket, Market: Derived
+Symbol: frxGBPAUD, Display Name: GBP/AUD, Market: Forex
+Symbol: frxGBPCAD, Display Name: GBP/CAD, Market: Forex
+Symbol: frxGBPCHF, Display Name: GBP/CHF, Market: Forex
+Symbol: frxGBPJPY, Display Name: GBP/JPY, Market: Forex
+Symbol: frxGBPNOK, Display Name: GBP/NOK, Market: Forex
+Symbol: frxGBPNZD, Display Name: GBP/NZD, Market: Forex
+Symbol: frxGBPUSD, Display Name: GBP/USD, Market: Forex
+Symbol: OTC_GDAXI, Display Name: Germany 40, Market: Stock Indices
+Symbol: WLDXAU, Display Name: Gold Basket, Market: Derived
+Symbol: frxXAUUSD, Display Name: Gold/USD, Market: Commodities
+Symbol: OTC_HSI, Display Name: Hong Kong 50, Market: Stock Indices
+Symbol: OTC_N225, Display Name: Japan 225, Market: Stock Indices
+Symbol: JD10, Display Name: Jump 10 Index, Market: Derived
+Symbol: JD25, Display Name: Jump 25 Index, Market: Derived
+Symbol: JD50, Display Name: Jump 50 Index, Market: Derived
+Symbol: JD75, Display Name: Jump 75 Index, Market: Derived
+Symbol: JD100, Display Name: Jump 100 Index, Market: Derived
+Symbol: frxNZDJPY, Display Name: NZD/JPY, Market: Forex
+Symbol: frxNZDUSD, Display Name: NZD/USD, Market: Forex
+Symbol: OTC_AEX, Display Name: Netherlands 25, Market: Stock Indices
+Symbol: frxXPDUSD, Display Name: Palladium/USD, Market: Commodities
+Symbol: frxXPTUSD, Display Name: Platinum/USD, Market: Commodities
+Symbol: frxXAGUSD, Display Name: Silver/USD, Market: Commodities
+Symbol: stpRNG, Display Name: Step Index 100, Market: Derived
+Symbol: stpRNG2, Display Name: Step Index 200, Market: Derived
+Symbol: stpRNG3, Display Name: Step Index 300, Market: Derived
+Symbol: stpRNG4, Display Name: Step Index 400, Market: Derived
+Symbol: stpRNG5, Display Name: Step Index 500, Market: Derived
+Symbol: OTC_SSMI, Display Name: Swiss 20, Market: Stock Indices
+Symbol: OTC_FTSE, Display Name: UK 100, Market: Stock Indices
+Symbol: OTC_SPC, Display Name: US 500, Market: Stock Indices
+Symbol: OTC_NDX, Display Name: US Tech 100, Market: Stock Indices
+Symbol: WLDUSD, Display Name: USD Basket, Market: Derived
+Symbol: frxUSDCAD, Display Name: USD/CAD, Market: Forex
+Symbol: frxUSDCHF, Display Name: USD/CHF, Market: Forex
+Symbol: frxUSDJPY, Display Name: USD/JPY, Market: Forex
+Symbol: frxUSDNOK, Display Name: USD/NOK, Market: Forex
+Symbol: frxUSDPLN, Display Name: USD/PLN, Market: Forex
+Symbol: frxUSDSEK, Display Name: USD/SEK, Market: Forex
+Symbol: 1HZ10V, Display Name: Volatility 10 (1s) Index, Market: Derived
+Symbol: R_10, Display Name: Volatility 10 Index, Market: Derived
+Symbol: 1HZ25V, Display Name: Volatility 25 (1s) Index, Market: Derived
+Symbol: R_25, Display Name: Volatility 25 Index, Market: Derived
+Symbol: 1HZ50V, Display Name: Volatility 50 (1s) Index, Market: Derived
+Symbol: R_50, Display Name: Volatility 50 Index, Market: Derived
+Symbol: 1HZ75V, Display Name: Volatility 75 (1s) Index, Market: Derived
+Symbol: R_75, Display Name: Volatility 75 Index, Market: Derived
+Symbol: 1HZ100V, Display Name: Volatility 100 (1s) Index, Market: Derived
+Symbol: R_100, Display Name: Volatility 100 Index, Market: Derived
+Symbol: 1HZ150V, Display Name: Volatility 150 (1s) Index, Market: Derived
+Symbol: 1HZ250V, Display Name: Volatility 250 (1s) Index, Market: Derived
+Symbol: OTC_DJI, Display Name: Wall Street 30, Market: Stock Indices

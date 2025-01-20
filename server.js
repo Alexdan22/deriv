@@ -13,6 +13,8 @@ let martingaleStep = 0;
 const maxMartingaleSteps = 2; // Maximum steps in the Martingale strategy
 let stake = 10; // Initial stake amount
 
+let ws; // WebSocket instance
+
 // Function to send data to WebSocket
 const sendToWebSocket = (ws, data) => {
   ws.send(JSON.stringify(data));
@@ -85,23 +87,66 @@ const placeTrade = (ws, symbol, call, stake, duration) => {
 };
 
 // Function to reset the trading state
-const resetTradingState = (ws) => {
+const resetTradingState = () => {
   isTrading = false;
   martingaleStep = 0;
   stake = 10; // Reset stake to initial value
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.close();
-  }
 };
+
+// Function to create a WebSocket connection
+const createWebSocket = () => {
+  ws = new WebSocket(WEBSOCKET_URL);
+
+  ws.on('open', () => {
+    console.log('Connected to Deriv API.');
+    sendToWebSocket(ws, { authorize: API_TOKEN });
+  });
+
+  ws.on('message', (data) => {
+    const response = JSON.parse(data);
+
+    if (response.msg_type === 'authorize') {
+      console.log('Authorized and ready to receive alerts.');
+    }
+
+    if (response.msg_type === 'buy') {
+      if (response.error) {
+        console.error('Error placing trade:', response.error.message);
+        resetTradingState();
+      } else {
+        console.log('Trade placed successfully:', response.buy);
+        resetTradingState();
+      }
+    }
+
+    if (response.msg_type === 'error') {
+      console.error('Error:', response.error.message);
+      resetTradingState();
+    }
+  });
+
+  ws.on('close', () => {
+    console.error('WebSocket connection closed. Reconnecting in 5 seconds...');
+    setTimeout(createWebSocket, 5000); // Reconnect after 5 seconds
+  });
+
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+  });
+};
+
+// Start WebSocket connection
+createWebSocket();
 
 // Webhook listener for TradingView alerts
 app.post('/webhook', async (req, res) => {
-  const { symbol, call } = req.body; // TradingView sends the ticker and call ('call' or 'put')
-  console.log(req.body);
+  const { symbol, call } = req.body;
 
   if (!symbol || !call) {
     return res.status(400).send('Invalid webhook payload');
   }
+
+  console.log(`Received alert for ${symbol} - Call: ${call}`);
 
   if (isTrading) {
     return res.status(200).send('Already trading. Ignoring new alert.');
@@ -109,57 +154,17 @@ app.post('/webhook', async (req, res) => {
 
   isTrading = true;
 
-  // Connect to Deriv WebSocket
-  const ws = new WebSocket(WEBSOCKET_URL);
+  try {
+    console.log('Fetching minimum duration...');
+    const minDuration = await getMinDuration(ws, 'frx' + symbol); // Use the correct symbol format
+    console.log(`Minimum duration for ${symbol}: ${minDuration} minutes`);
 
-  ws.on('open', async () => {
-    console.log('Connected to Deriv API.');
-
-    // Authorize the connection
-    sendToWebSocket(ws, { authorize: API_TOKEN });
-
-    ws.on('message', async (data) => {
-      const response = JSON.parse(data);
-
-      if (response.msg_type === 'authorize') {
-        console.log('Authorized. Fetching minimum duration...');
-        try {
-          const minDuration = await getMinDuration(ws, 'frx' + symbol); // Use the proper symbol format
-          console.log(`Minimum duration for ${symbol}: ${minDuration} minutes`);
-
-          // Place the trade using the minimum duration
-          console.log('Placing trade...');
-          placeTrade(ws, symbol, call, stake, minDuration);
-        } catch (error) {
-          console.error('Error fetching minimum duration:', error);
-          resetTradingState(ws);
-        }
-      }
-
-      if (response.msg_type === 'buy') {
-        if (response.error) {
-          console.error('Error placing trade:', response.error.message);
-          resetTradingState(ws);
-        } else {
-          console.log('Trade placed successfully:', response.buy);
-        }
-      }
-
-      if (response.msg_type === 'error') {
-        console.error('Error:', response.error.message);
-        resetTradingState(ws);
-      }
-    });
-
-    ws.on('close', () => {
-      console.log('WebSocket connection closed.');
-    });
-
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-      resetTradingState(ws);
-    });
-  });
+    console.log('Placing trade...');
+    placeTrade(ws, symbol, call, stake, minDuration);
+  } catch (error) {
+    console.error('Error processing alert:', error);
+    resetTradingState();
+  }
 
   res.status(200).send('Webhook received and trade initiated.');
 });
