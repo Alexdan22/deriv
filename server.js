@@ -18,9 +18,16 @@ const sendToWebSocket = (ws, data) => {
   ws.send(JSON.stringify(data));
 };
 
+app.get('/', async(req, res)=> {
+  console.log('I am running active in the server');
+  
+})
+
 // Webhook listener for TradingView alerts
 app.post('/webhook', async (req, res) => {
   const { ticker, call } = req.body; // TradingView sends the ticker and call ('up' or 'down')
+  console.log(req.body);
+  
   if (!ticker || !call) {
     return res.status(400).send('Invalid webhook payload');
   }
