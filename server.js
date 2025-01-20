@@ -18,11 +18,33 @@ const sendToWebSocket = (ws, data) => {
   ws.send(JSON.stringify(data));
 };
 
+// Function to fetch supported durations for the given symbol
+const getSupportedDurations = (ws, symbol) => {
+  return new Promise((resolve, reject) => {
+    const listener = (event) => {
+      const response = JSON.parse(event.data);
+      if (response.error) {
+        reject(response.error.message);
+        ws.removeEventListener('message', listener);
+      } else if (response.msg_type === 'contracts_for') {
+        ws.removeEventListener('message', listener);
+        resolve(response.contracts_for.available);
+      }
+    };
+
+    ws.addEventListener('message', listener);
+
+    sendToWebSocket(ws, {
+      contracts_for: 'frx' + symbol,
+      currency: 'USD',
+    });
+  });
+};
+
 // Webhook listener for TradingView alerts
 app.post('/webhook', async (req, res) => {
   const { symbol, call } = req.body; // TradingView sends the ticker and call ('call' or 'put')
   console.log(req.body);
-  console.log( 'frx' + req.body.symbol);
 
   if (!symbol || !call) {
     return res.status(400).send('Invalid webhook payload');
@@ -39,60 +61,84 @@ app.post('/webhook', async (req, res) => {
   // Connect to Deriv WebSocket
   const ws = new WebSocket(WEBSOCKET_URL);
 
-  ws.on('open', () => {
+  ws.on('open', async () => {
     console.log('Connected to Deriv API.');
 
     // Authorize the connection
     sendToWebSocket(ws, { authorize: API_TOKEN });
-  });
 
-  ws.on('message', (data) => {
-    const response = JSON.parse(data);
+    // Wait for authorization and fetch supported durations
+    ws.on('message', async (data) => {
+      const response = JSON.parse(data);
 
-    if (response.msg_type === 'authorize') {
-      console.log('Authorized. Placing initial trade...');
-      placeTrade(ws, symbol, call, stake);
-    }
+      if (response.msg_type === 'authorize') {
+        console.log('Authorized. Fetching supported durations...');
+        try {
+          const supportedDurations = await getSupportedDurations(ws, symbol);
 
-    if (response.msg_type === 'buy') {
-      if (response.error) {
-        console.error('Error placing trade:', response.error.message);
+          const is1mSupported = supportedDurations.some(
+            (duration) =>
+              duration.contract_type === (call === 'call' ? 'CALL' : 'PUT') &&
+              duration.min_contract_duration === '1m'
+          );
 
-        // Handle specific error scenarios
-        if (response.error.code === 'ContractCreationFailure') {
-          console.log('Trading is not offered for this asset. Resetting state.');
+          if (!is1mSupported) {
+            console.log('1-minute duration is not supported for this asset.');
+            resetTradingState(ws);
+            return res
+              .status(400)
+              .send('1-minute duration not supported for this asset.');
+          }
+
+          console.log('1-minute duration supported. Placing initial trade...');
+          placeTrade(ws, symbol, call, stake);
+        } catch (error) {
+          console.error('Error fetching supported durations:', error);
+          resetTradingState(ws);
+          res.status(500).send('Failed to fetch supported durations.');
         }
-        resetTradingState(ws);
-      } else {
-        console.log('Trade placed successfully:', response.buy);
       }
-    }
 
-    if (response.msg_type === 'proposal_open_contract') {
-      const contract = response.proposal_open_contract;
+      if (response.msg_type === 'buy') {
+        if (response.error) {
+          console.error('Error placing trade:', response.error.message);
 
-      if (contract.status !== 'open') {
-        if (contract.profit > 0) {
-          console.log('Trade won. Returning to idle state.');
+          // Handle specific error scenarios
+          if (response.error.code === 'ContractCreationFailure') {
+            console.log('Trading is not offered for this asset. Resetting state.');
+          }
           resetTradingState(ws);
         } else {
-          console.log('Trade lost. Entering Martingale strategy...');
-          martingaleStep++;
-          if (martingaleStep <= maxMartingaleSteps) {
-            stake *= 2; // Double the stake for Martingale
-            placeTrade(ws, symbol, call, stake);
-          } else {
-            console.log('Martingale steps completed. Returning to idle state.');
+          console.log('Trade placed successfully:', response.buy);
+        }
+      }
+
+      if (response.msg_type === 'proposal_open_contract') {
+        const contract = response.proposal_open_contract;
+
+        if (contract.status !== 'open') {
+          if (contract.profit > 0) {
+            console.log('Trade won. Returning to idle state.');
             resetTradingState(ws);
+          } else {
+            console.log('Trade lost. Entering Martingale strategy...');
+            martingaleStep++;
+            if (martingaleStep <= maxMartingaleSteps) {
+              stake *= 2; // Double the stake for Martingale
+              placeTrade(ws, symbol, call, stake);
+            } else {
+              console.log('Martingale steps completed. Returning to idle state.');
+              resetTradingState(ws);
+            }
           }
         }
       }
-    }
 
-    if (response.msg_type === 'error') {
-      console.error('Error:', response.error.message);
-      resetTradingState(ws);
-    }
+      if (response.msg_type === 'error') {
+        console.error('Error:', response.error.message);
+        resetTradingState(ws);
+      }
+    });
   });
 
   ws.on('close', () => {
