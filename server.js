@@ -45,7 +45,7 @@ app.post('/webhook', async (req, res) => {
 
   ws.on('message', (data) => {
     const response = JSON.parse(data);
-    console.log('Response:', response);
+    
 
     if (response.msg_type === 'authorize') {
       console.log('Authorized. Placing initial trade...');
@@ -58,7 +58,9 @@ app.post('/webhook', async (req, res) => {
 
     if (response.msg_type === 'proposal_open_contract') {
       const { contract } = response.proposal_open_contract;
-      if (contract.status === 'sold') {
+      if (contract.status !== 'open') {
+
+        console.log(contract.status);        
         if (contract.profit > 0) {
           console.log('Trade won. Returning to idle state.');
           resetTradingState(ws);
