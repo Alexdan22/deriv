@@ -25,7 +25,8 @@ const sendToWebSocket = (ws, data) => {
 
 // Webhook listener for TradingView alerts
 app.post('/webhook', async (req, res) => {
-  const { ticker, call } = req.body; // TradingView sends the ticker and call ('up' or 'down')
+  const ticker = req.body.symbol;
+  const call = req.body.call // TradingView sends the ticker and call ('up' or 'down')
   console.log('Webhook Payload:', req.body);
 
   if (!ticker || !call) {
