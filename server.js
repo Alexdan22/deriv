@@ -8,10 +8,7 @@ const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 const app = express();
 app.use(bodyParser.json());
 
-let isTrading = false; // Prevent overlapping trades
-let martingaleStep = 0;
-const maxMartingaleSteps = 2; // Maximum steps in the Martingale strategy
-let stake = 10; // Initial stake amount
+const trades = new Map(); // Track each trade by its symbol or unique ID
 
 let ws; // WebSocket instance
 
@@ -32,7 +29,6 @@ const getMinDuration = (ws, symbol) => {
       } else if (response.msg_type === 'contracts_for') {
         ws.removeEventListener('message', listener);
 
-        // Extract minimum duration
         const availableContracts = response.contracts_for.available;
         const minDuration = availableContracts.reduce((min, contract) => {
           const duration = parseDuration(contract.min_contract_duration);
@@ -56,41 +52,67 @@ const getMinDuration = (ws, symbol) => {
 
 // Helper function to parse durations (e.g., "1m" => 1 minute)
 const parseDuration = (duration) => {
-  const unit = duration.slice(-1); // Get the last character (e.g., 'm', 'h', 'd')
-  const value = parseInt(duration.slice(0, -1), 10); // Get the numeric part
+  const unit = duration.slice(-1);
+  const value = parseInt(duration.slice(0, -1), 10);
   switch (unit) {
-    case 't': return value; // Ticks
-    case 's': return value / 60; // Seconds to minutes
-    case 'm': return value; // Minutes
-    case 'h': return value * 60; // Hours to minutes
-    case 'd': return value * 1440; // Days to minutes
-    default: return Infinity; // Unknown duration
+    case 't': return value;
+    case 's': return value / 60;
+    case 'm': return value;
+    case 'h': return value * 60;
+    case 'd': return value * 1440;
+    default: return Infinity;
   }
 };
 
 // Function to place a trade
-const placeTrade = (ws, symbol, call, stake, duration) => {
-  const contractType = call === 'call' ? 'CALL' : 'PUT'; // Determine contract type based on call
+const placeTrade = (ws, trade) => {
+  const { symbol, call, stake, duration } = trade;
+  const contractType = call === 'call' ? 'CALL' : 'PUT';
+
   sendToWebSocket(ws, {
     buy: 1,
-    price: stake, // Stake amount
+    price: stake,
     parameters: {
       amount: stake,
       basis: 'stake',
       contract_type: contractType,
       currency: 'USD',
       duration: duration,
-      duration_unit: 'm', // Minutes
+      duration_unit: 'm',
       symbol: 'frx' + symbol,
     },
   });
 };
 
-// Function to reset the trading state
-const resetTradingState = () => {
-  isTrading = false;
-  martingaleStep = 0;
-  stake = 10; // Reset stake to initial value
+// Function to handle trade results
+const handleTradeResult = (trade, contract) => {
+  const { symbol } = trade;
+
+  if (contract.status !== 'open') {
+    const tradePnL = contract.profit;
+    trade.totalPnL += tradePnL;
+
+    if (tradePnL > 0) {
+      console.log(`Trade for ${symbol} won. Returning to idle state.`);
+      trades.delete(symbol);
+    } else {
+      trade.martingaleStep++;
+      if (trade.martingaleStep <= trade.maxMartingaleSteps) {
+        trade.stake *= 2;
+        console.log(
+          `Trade for ${symbol} lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
+        );
+        placeTrade(ws, trade);
+      } else {
+        console.log(
+          `All Martingale steps for ${symbol} lost. Logging total PnL: ${trade.totalPnL.toFixed(
+            2
+          )} USD. Returning to idle state.`
+        );
+        trades.delete(symbol);
+      }
+    }
+  }
 };
 
 // Function to create a WebSocket connection
@@ -112,22 +134,32 @@ const createWebSocket = () => {
     if (response.msg_type === 'buy') {
       if (response.error) {
         console.error('Error placing trade:', response.error.message);
-        resetTradingState();
+        const symbol = response.error.symbol;
+        if (symbol && trades.has(symbol)) {
+          trades.delete(symbol);
+        }
       } else {
         console.log('Trade placed successfully:', response.buy);
-        resetTradingState();
+      }
+    }
+
+    if (response.msg_type === 'proposal_open_contract') {
+      const contract = response.proposal_open_contract;
+      const symbol = contract.symbol.slice(3); // Extract symbol from "frxUSDJPY"
+
+      if (trades.has(symbol)) {
+        handleTradeResult(trades.get(symbol), contract);
       }
     }
 
     if (response.msg_type === 'error') {
       console.error('Error:', response.error.message);
-      resetTradingState();
     }
   });
 
   ws.on('close', () => {
     console.error('WebSocket connection closed. Reconnecting in 5 seconds...');
-    setTimeout(createWebSocket, 5000); // Reconnect after 5 seconds
+    setTimeout(createWebSocket, 5000);
   });
 
   ws.on('error', (error) => {
@@ -146,24 +178,34 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send('Invalid webhook payload');
   }
 
-  console.log(`Received alert for ${symbol} - Call: ${call}`);
-
-  if (isTrading) {
-    return res.status(200).send('Already trading. Ignoring new alert.');
+  if (trades.has(symbol)) {
+    return res.status(200).send(`Trade for ${symbol} is already in progress.`);
   }
 
-  isTrading = true;
+  console.log(`Received alert for ${symbol} - Call: ${call}`);
+
+  const trade = {
+    symbol,
+    call,
+    stake: 10, // Initial stake
+    martingaleStep: 0,
+    maxMartingaleSteps: 3,
+    totalPnL: 0,
+  };
+
+  trades.set(symbol, trade);
 
   try {
     console.log('Fetching minimum duration...');
-    const minDuration = await getMinDuration(ws, 'frx' + symbol); // Use the correct symbol format
+    const minDuration = await getMinDuration(ws, 'frx' + symbol);
     console.log(`Minimum duration for ${symbol}: ${minDuration} minutes`);
+    trade.duration = minDuration;
 
-    console.log('Placing trade...');
-    placeTrade(ws, symbol, call, stake, minDuration);
+    console.log('Placing initial trade...');
+    placeTrade(ws, trade);
   } catch (error) {
     console.error('Error processing alert:', error);
-    resetTradingState();
+    trades.delete(symbol);
   }
 
   res.status(200).send('Webhook received and trade initiated.');
