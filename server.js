@@ -73,6 +73,54 @@ const placeTrade = (ws, trade) => {
 const createWebSocket = () => {
   ws = new WebSocket(WEBSOCKET_URL);
 
+    // Function to fetch minimum duration for a symbol
+  const getMinDuration = (ws, symbol) => {
+    return new Promise((resolve, reject) => {
+      const listener = (event) => {
+        const response = JSON.parse(event.data);
+
+        if (response.error) {
+          ws.removeEventListener('message', listener);
+          reject(`Error: ${response.error.message}`);
+        } else if (response.msg_type === 'contracts_for') {
+          ws.removeEventListener('message', listener);
+
+          const availableContracts = response.contracts_for.available;
+          const minDuration = availableContracts.reduce((min, contract) => {
+            const duration = parseDuration(contract.min_contract_duration);
+            return duration < min ? duration : min;
+          }, Infinity);
+
+          resolve(minDuration);
+        }
+      };
+
+      ws.addEventListener('message', listener);
+
+      ws.send(
+        JSON.stringify({
+          contracts_for: symbol,
+          currency: 'USD',
+        })
+      );
+    });
+  };
+
+  // Helper function to parse durations (e.g., "1m" => 1 minute)
+  const parseDuration = (duration) => {
+    const unit = duration.slice(-1);
+    const value = parseInt(duration.slice(0, -1), 10);
+    switch (unit) {
+      case 't': return value;
+      case 's': return value / 60;
+      case 'm': return value;
+      case 'h': return value * 60;
+      case 'd': return value * 1440;
+      default: return Infinity;
+    }
+  };
+
+
   ws.on('open', () => {
     console.log('Connected to Deriv API.');
     sendToWebSocket(ws, { authorize: API_TOKEN });
