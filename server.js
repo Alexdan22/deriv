@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
+const fs = require('fs');
 
 const API_TOKEN = 'VX41WSwVGQDET3r'; // Replace with your Deriv API token
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
@@ -9,12 +10,25 @@ const app = express();
 app.use(bodyParser.json());
 
 const trades = new Map(); // Track each trade by its symbol or unique ID
-
 let ws; // WebSocket instance
 
 // Function to send data to WebSocket
 const sendToWebSocket = (ws, data) => {
   ws.send(JSON.stringify(data));
+};
+
+// Helper function to parse durations (e.g., "1m" => 1 minute)
+const parseDuration = (duration) => {
+  const unit = duration.slice(-1);
+  const value = parseInt(duration.slice(0, -1), 10);
+  switch (unit) {
+    case 't': return value;
+    case 's': return value / 60;
+    case 'm': return value;
+    case 'h': return value * 60;
+    case 'd': return value * 1440;
+    default: return Infinity;
+  }
 };
 
 // Function to fetch minimum duration
@@ -50,24 +64,20 @@ const getMinDuration = (ws, symbol) => {
   });
 };
 
-// Helper function to parse durations (e.g., "1m" => 1 minute)
-const parseDuration = (duration) => {
-  const unit = duration.slice(-1);
-  const value = parseInt(duration.slice(0, -1), 10);
-  switch (unit) {
-    case 't': return value;
-    case 's': return value / 60;
-    case 'm': return value;
-    case 'h': return value * 60;
-    case 'd': return value * 1440;
-    default: return Infinity;
-  }
-};
-
 // Function to place a trade
 const placeTrade = (ws, trade) => {
+  if (trade.martingaleStep > trade.maxMartingaleSteps) {
+    console.log(`Trade for ${trade.symbol} has exceeded max Martingale steps. Skipping.`);
+    trades.delete(trade.symbol);
+    return;
+  }
+
   const { symbol, call, stake, duration } = trade;
   const contractType = call === 'call' ? 'CALL' : 'PUT';
+
+  console.log(
+    `Placing trade for ${symbol} - Martingale Step: ${trade.martingaleStep}, Stake: ${stake}`
+  );
 
   sendToWebSocket(ws, {
     buy: 1,
@@ -122,6 +132,12 @@ const createWebSocket = () => {
   ws.on('open', () => {
     console.log('Connected to Deriv API.');
     sendToWebSocket(ws, { authorize: API_TOKEN });
+
+    // Resend active trades to continue from where they left off
+    trades.forEach((trade) => {
+      console.log(`Resuming trade for ${trade.symbol}. Martingale step: ${trade.martingaleStep}`);
+      placeTrade(ws, trade);
+    });
   });
 
   ws.on('message', (data) => {
@@ -166,6 +182,22 @@ const createWebSocket = () => {
     console.error('WebSocket error:', error);
   });
 };
+
+// Optional: Persist trade states to a file
+const saveTrades = () => {
+  fs.writeFileSync('trades.json', JSON.stringify([...trades.entries()], null, 2));
+};
+
+const loadTrades = () => {
+  if (fs.existsSync('trades.json')) {
+    const savedTrades = JSON.parse(fs.readFileSync('trades.json'));
+    savedTrades.forEach(([symbol, trade]) => trades.set(symbol, trade));
+    console.log('Loaded saved trades:', trades);
+  }
+};
+
+// Load saved trades at startup
+loadTrades();
 
 // Start WebSocket connection
 createWebSocket();
