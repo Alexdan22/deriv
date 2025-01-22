@@ -91,28 +91,28 @@ const placeTrade = (ws, trade) => {
 const handleTradeResult = (trade, contract) => {
   const { symbol } = trade;
 
-  if (contract.status !== 'open') {
+  if (contract.status === 'sold') {
     const tradePnL = contract.profit;
     trade.totalPnL += tradePnL;
 
     if (tradePnL > 0) {
-      console.log(`Trade for ${symbol} won. Returning to idle state.`);
-      trades.delete(symbol);
+      console.log(`Trade for ${symbol} won. PnL: ${tradePnL.toFixed(2)} USD. Returning to idle state.`);
+      trades.delete(symbol); // Stop tracking this trade
     } else {
       trade.martingaleStep++;
       if (trade.martingaleStep <= trade.maxMartingaleSteps) {
-        trade.stake *= 2;
+        trade.stake *= 2; // Double the stake
         console.log(
           `Trade for ${symbol} lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
         );
-        placeTrade(ws, trade);
+        placeTrade(ws, trade); // Place the next trade in the sequence
       } else {
         console.log(
           `All Martingale steps for ${symbol} lost. Logging total PnL: ${trade.totalPnL.toFixed(
             2
           )} USD. Returning to idle state.`
         );
-        trades.delete(symbol);
+        trades.delete(symbol); // Stop tracking this trade
       }
     }
   }
