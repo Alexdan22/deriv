@@ -11,13 +11,15 @@ app.use(bodyParser.json());
 const trades = new Map(); // Track each trade by its symbol or unique ID
 
 let ws; // WebSocket instance
+const PING_INTERVAL = 30000; // Send a ping every 30 seconds
+let pingInterval; // Store the interval ID
 
 // Function to send data to WebSocket
 const sendToWebSocket = (ws, data) => {
   ws.send(JSON.stringify(data));
 };
 
-// Function to fetch minimum duration for a symbol
+// Function to fetch minimum duration
 const getMinDuration = (ws, symbol) => {
   return new Promise((resolve, reject) => {
     const listener = (event) => {
@@ -69,6 +71,7 @@ const placeTrade = (ws, trade) => {
   const { symbol, call, stake, duration } = trade;
   const contractType = call === 'call' ? 'CALL' : 'PUT';
 
+  console.log(`Placing trade for ${symbol} - Martingale Step: ${trade.martingaleStep}, Stake: ${stake}`);
   sendToWebSocket(ws, {
     buy: 1,
     price: stake,
@@ -122,6 +125,15 @@ const createWebSocket = () => {
   ws.on('open', () => {
     console.log('Connected to Deriv API.');
     sendToWebSocket(ws, { authorize: API_TOKEN });
+
+    // Start sending periodic pings
+    clearInterval(pingInterval); // Clear any existing intervals
+    pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        console.log('Sending ping to keep the connection alive.');
+        ws.send(JSON.stringify({ ping: 1 }));
+      }
+    }, PING_INTERVAL);
   });
 
   ws.on('message', (data) => {
@@ -159,6 +171,7 @@ const createWebSocket = () => {
 
   ws.on('close', () => {
     console.error('WebSocket connection closed. Reconnecting in 5 seconds...');
+    clearInterval(pingInterval); // Stop pinging when the connection is closed
     setTimeout(createWebSocket, 5000);
   });
 
