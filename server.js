@@ -1,9 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
-const fs = require('fs');
 
-const API_TOKEN = 'VX41WSwVGQDET3r'; // Replace with your Deriv API token
+const API_TOKEN = '44TRhSy7NFXLsSl'; // Replace with your Deriv API token
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 
 const app = express();
@@ -11,61 +10,37 @@ app.use(bodyParser.json());
 
 const trades = new Map(); // Track each trade by its symbol or unique ID
 let ws; // WebSocket instance
+let isAuthorized = false; // Track if the session is authorized
+let pingInterval; // To manage ping intervals
 
 // Function to send data to WebSocket
 const sendToWebSocket = (ws, data) => {
-  ws.send(JSON.stringify(data));
-};
-
-// Helper function to parse durations (e.g., "1m" => 1 minute)
-const parseDuration = (duration) => {
-  const unit = duration.slice(-1);
-  const value = parseInt(duration.slice(0, -1), 10);
-  switch (unit) {
-    case 't': return value;
-    case 's': return value / 60;
-    case 'm': return value;
-    case 'h': return value * 60;
-    case 'd': return value * 1440;
-    default: return Infinity;
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
   }
 };
 
-// Function to fetch minimum duration
-const getMinDuration = (ws, symbol) => {
-  return new Promise((resolve, reject) => {
-    const listener = (event) => {
-      const response = JSON.parse(event.data);
+// Function to handle WebSocket ping to keep connection alive
+const startPing = (ws) => {
+  if (pingInterval) clearInterval(pingInterval);
 
-      if (response.error) {
-        ws.removeEventListener('message', listener);
-        reject(`Error: ${response.error.message}`);
-      } else if (response.msg_type === 'contracts_for') {
-        ws.removeEventListener('message', listener);
-
-        const availableContracts = response.contracts_for.available;
-        const minDuration = availableContracts.reduce((min, contract) => {
-          const duration = parseDuration(contract.min_contract_duration);
-          return duration < min ? duration : min;
-        }, Infinity);
-
-        resolve(minDuration);
-      }
-    };
-
-    ws.addEventListener('message', listener);
-
-    ws.send(
-      JSON.stringify({
-        contracts_for: symbol,
-        currency: 'USD',
-      })
-    );
-  });
+  pingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      sendToWebSocket(ws, { ping: 1 });
+      console.log('Ping sent to keep connection alive.');
+    } else {
+      clearInterval(pingInterval);
+    }
+  }, 30000); // Send ping every 30 seconds
 };
 
 // Function to place a trade
 const placeTrade = (ws, trade) => {
+  if (!isAuthorized) {
+    console.log(`Skipping trade for ${trade.symbol}: WebSocket not authorized.`);
+    return;
+  }
+
   if (trade.martingaleStep > trade.maxMartingaleSteps) {
     console.log(`Trade for ${trade.symbol} has exceeded max Martingale steps. Skipping.`);
     trades.delete(trade.symbol);
@@ -91,6 +66,68 @@ const placeTrade = (ws, trade) => {
       duration_unit: 'm',
       symbol: 'frx' + symbol,
     },
+  });
+};
+
+// Function to create a WebSocket connection
+const createWebSocket = () => {
+  ws = new WebSocket(WEBSOCKET_URL);
+
+  ws.on('open', () => {
+    console.log('Connected to Deriv API.');
+    sendToWebSocket(ws, { authorize: API_TOKEN });
+    startPing(ws); // Start ping to keep the connection alive
+  });
+
+  ws.on('message', (data) => {
+    const response = JSON.parse(data);
+
+    if (response.msg_type === 'authorize') {
+      console.log('Authorized and ready to receive alerts.');
+      isAuthorized = true;
+
+      // Resume trades only after authorization
+      trades.forEach((trade) => {
+        console.log(`Resuming trade for ${trade.symbol}. Martingale step: ${trade.martingaleStep}`);
+        placeTrade(ws, trade);
+      });
+    }
+
+    if (response.msg_type === 'buy') {
+      if (response.error) {
+        console.error('Error placing trade:', response.error.message);
+        const symbol = response.error.symbol;
+        if (symbol && trades.has(symbol)) {
+          trades.delete(symbol);
+        }
+      } else {
+        console.log('Trade placed successfully:', response.buy);
+      }
+    }
+
+    if (response.msg_type === 'proposal_open_contract') {
+      const contract = response.proposal_open_contract;
+      const symbol = contract.symbol.slice(3); // Extract symbol from "frxUSDJPY"
+
+      if (trades.has(symbol)) {
+        handleTradeResult(trades.get(symbol), contract);
+      }
+    }
+
+    if (response.msg_type === 'error') {
+      console.error('Error:', response.error.message);
+    }
+  });
+
+  ws.on('close', () => {
+    console.error('WebSocket connection closed. Reconnecting in 5 seconds...');
+    isAuthorized = false; // Reset authorization state
+    clearInterval(pingInterval);
+    setTimeout(createWebSocket, 5000);
+  });
+
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
   });
 };
 
@@ -124,80 +161,6 @@ const handleTradeResult = (trade, contract) => {
     }
   }
 };
-
-// Function to create a WebSocket connection
-const createWebSocket = () => {
-  ws = new WebSocket(WEBSOCKET_URL);
-
-  ws.on('open', () => {
-    console.log('Connected to Deriv API.');
-    sendToWebSocket(ws, { authorize: API_TOKEN });
-
-    // Resend active trades to continue from where they left off
-    trades.forEach((trade) => {
-      console.log(`Resuming trade for ${trade.symbol}. Martingale step: ${trade.martingaleStep}`);
-      placeTrade(ws, trade);
-    });
-  });
-
-  ws.on('message', (data) => {
-    const response = JSON.parse(data);
-
-    if (response.msg_type === 'authorize') {
-      console.log('Authorized and ready to receive alerts.');
-    }
-
-    if (response.msg_type === 'buy') {
-      if (response.error) {
-        console.error('Error placing trade:', response.error.message);
-        const symbol = response.error.symbol;
-        if (symbol && trades.has(symbol)) {
-          trades.delete(symbol);
-        }
-      } else {
-        console.log('Trade placed successfully:', response.buy);
-      }
-    }
-
-    if (response.msg_type === 'proposal_open_contract') {
-      const contract = response.proposal_open_contract;
-      const symbol = contract.symbol.slice(3); // Extract symbol from "frxUSDJPY"
-
-      if (trades.has(symbol)) {
-        handleTradeResult(trades.get(symbol), contract);
-      }
-    }
-
-    if (response.msg_type === 'error') {
-      console.error('Error:', response.error.message);
-    }
-  });
-
-  ws.on('close', () => {
-    console.error('WebSocket connection closed. Reconnecting in 5 seconds...');
-    setTimeout(createWebSocket, 5000);
-  });
-
-  ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
-  });
-};
-
-// Optional: Persist trade states to a file
-const saveTrades = () => {
-  fs.writeFileSync('trades.json', JSON.stringify([...trades.entries()], null, 2));
-};
-
-const loadTrades = () => {
-  if (fs.existsSync('trades.json')) {
-    const savedTrades = JSON.parse(fs.readFileSync('trades.json'));
-    savedTrades.forEach(([symbol, trade]) => trades.set(symbol, trade));
-    console.log('Loaded saved trades:', trades);
-  }
-};
-
-// Load saved trades at startup
-loadTrades();
 
 // Start WebSocket connection
 createWebSocket();
