@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
+const axios = require('axios');
 
 const API_TOKEN = 'VX41WSwVGQDET3r'; // Replace with your Deriv API token
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
@@ -70,15 +71,21 @@ const parseDuration = (duration) => {
 };
 
 // Function to place a trade
-const placeTrade = async(ws, trade) => {
-  const { symbol, call, stake, duration } = trade;
+const placeTrade = async (ws, trade) => {
+  const { symbol, call, stake } = trade;
+
   const contractType = call === 'call' ? 'CALL' : 'PUT';
 
-  // Send the message to Telegram
-  await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    chat_id: WHITEHAT_CHAT_ID,
-    text: `Placing trade for ${symbol} - Martingale Step: ${trade.martingaleStep}, Stake: ${stake}`,
-  });
+  try {
+    // Send the message to Telegram
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      chat_id: WHITEHAT_CHAT_ID,
+      text: `Placing trade for ${symbol} - Martingale Step: ${trade.martingaleStep}, Stake: ${stake}`,
+    });
+    console.log(`Telegram alert sent: Placing trade for ${symbol} - Stake: ${stake}`);
+  } catch (err) {
+    console.error(`Error sending Telegram alert: ${err.message}`);
+  }
 
   console.log(`Placing trade for ${symbol} - Martingale Step: ${trade.martingaleStep}, Stake: ${stake}`);
   sendToWebSocket(ws, {
@@ -89,22 +96,28 @@ const placeTrade = async(ws, trade) => {
       basis: 'stake',
       contract_type: contractType,
       currency: 'USD',
-      duration: duration,
+      duration: trade.duration,
       duration_unit: 'm',
       symbol: 'frx' + symbol,
     },
   });
 };
 
+
 // Function to handle trade results
-const handleTradeResult = async(trade, contract) => {
+const handleTradeResult = async (trade, contract) => {
   const { symbol } = trade;
 
-  // Send the message to Telegram
-  await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    chat_id: WHITEHAT_CHAT_ID,
-    text: contract,
-  });
+  try {
+    // Send trade result to Telegram
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      chat_id: WHITEHAT_CHAT_ID,
+      text: `Trade completed for ${symbol}: ${JSON.stringify(contract)}`,
+    });
+    console.log(`Telegram alert sent: Trade completed for ${symbol}`);
+  } catch (err) {
+    console.error(`Error sending Telegram alert: ${err.message}`);
+  }
 
   if (contract.status === 'sold') {
     const tradePnL = contract.profit;
@@ -132,6 +145,7 @@ const handleTradeResult = async(trade, contract) => {
     }
   }
 };
+
 
 // Function to create a WebSocket connection
 const createWebSocket = () => {
