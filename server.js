@@ -182,20 +182,19 @@ const createWebSocket = () => {
 
     const contract = response.proposal_open_contract;
     
-
-    if (contract.is_expired) {
-      const symbol = contract.underlying.slice(3); // Extract symbol from "frxUSDJPY"
-
-      if (trades.has(symbol)) {
-        console.log(`Trade completed for ${symbol}. Processing result...`);
-        handleTradeResult(trades.get(symbol), contract);
-      } else {
-        console.warn(`Received trade result for unknown symbol: ${symbol}`);
+    if(!contract.error){
+      
+      if (contract.is_expired) {
+        const symbol = contract.underlying.slice(3); // Extract symbol from "frxUSDJPY"
+  
+        if (trades.has(symbol)) {
+          console.log(`Trade completed for ${symbol}. Processing result...`);
+          handleTradeResult(trades.get(symbol), contract);
+        } else {
+          console.warn(`Received trade result for unknown symbol: ${symbol}`);
+        }
       }
     }
-  }
-  else {
-    console.log(response);
     
   }
 });
