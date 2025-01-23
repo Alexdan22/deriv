@@ -113,24 +113,13 @@ const placeTrade = async (ws, trade) => {
 const handleTradeResult = async (trade, contract) => {
   const { symbol } = trade;
 
-  try {
-    // Send trade result to Telegram
-    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      chat_id: WHITEHAT_CHAT_ID,
-      text: `Trade completed for ${symbol}: ${JSON.stringify(contract)}`,
-    });
-    console.log(`Telegram alert sent: Trade completed for ${symbol}`);
-  } catch (err) {
-    console.error(`Error sending Telegram alert: ${err.message}`);
-  }
+  // Send the message to Telegram
+  await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    chat_id: WHITEHAT_CHAT_ID,
+    text: JSON.stringify(contract, null, 2),
+  });
 
-  // Ensure we only process results for trades still being tracked
-  if (!trades.has(symbol)) {
-    console.warn(`Trade result received for unknown or completed trade: ${symbol}`);
-    return;
-  }
-
-  if (contract.status === 'sold') {
+  if (contract.is_expired && contract.is_sold) {
     const tradePnL = contract.profit;
     trade.totalPnL += tradePnL;
 
@@ -139,30 +128,24 @@ const handleTradeResult = async (trade, contract) => {
       trades.delete(symbol); // Stop tracking this trade
     } else {
       trade.martingaleStep++;
-      console.log(
-        `Trade for ${symbol} lost. Current martingale step: ${trade.martingaleStep}. Max steps allowed: ${trade.maxMartingaleSteps}.`
-      );
-
-      // Check if we can proceed to the next martingale step
       if (trade.martingaleStep <= trade.maxMartingaleSteps) {
         trade.stake *= 2; // Double the stake
         console.log(
-          `Entering Martingale step ${trade.martingaleStep} for ${symbol} with new stake: ${trade.stake}`
+          `Trade for ${symbol} lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
         );
         placeTrade(ws, trade); // Place the next trade in the sequence
       } else {
         console.log(
           `All Martingale steps for ${symbol} lost. Total PnL: ${trade.totalPnL.toFixed(
             2
-          )} USD. Stopping Martingale strategy.`
+          )} USD. Returning to idle state.`
         );
         trades.delete(symbol); // Stop tracking this trade
       }
     }
-  } else {
-    console.warn(`Unexpected contract status: ${contract.status}`);
   }
 };
+
 
 
 
@@ -198,19 +181,18 @@ const createWebSocket = () => {
     console.log('Open contract update received:', JSON.stringify(response, null, 2));;
 
     const contract = response.proposal_open_contract;
-    console.log(contract);
     
 
-    // if (contract.is_expired) {
-    //   const symbol = contract.underlying.slice(3); // Extract symbol from "frxUSDJPY"
+    if (contract.is_expired) {
+      const symbol = contract.underlying.slice(3); // Extract symbol from "frxUSDJPY"
 
-    //   if (trades.has(symbol)) {
-    //     console.log(`Trade completed for ${symbol}. Processing result...`);
-    //     handleTradeResult(trades.get(symbol), contract);
-    //   } else {
-    //     console.warn(`Received trade result for unknown symbol: ${symbol}`);
-    //   }
-    // }
+      if (trades.has(symbol)) {
+        console.log(`Trade completed for ${symbol}. Processing result...`);
+        handleTradeResult(trades.get(symbol), contract);
+      } else {
+        console.warn(`Received trade result for unknown symbol: ${symbol}`);
+      }
+    }
   }
   else {
     console.log(response);
