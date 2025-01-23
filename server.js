@@ -6,9 +6,6 @@ const axios = require('axios');
 const API_TOKEN = 'VX41WSwVGQDET3r'; // Replace with your Deriv API token
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 
-const TELEGRAM_BOT_TOKEN = '7834723053:AAE3oqsuPQyo5rqTOsHL_pwnF2zyN-Qv1GI';
-const WHITEHAT_CHAT_ID = '1889378485';
-
 const app = express();
 app.use(bodyParser.json());
 
@@ -79,11 +76,6 @@ const placeTrade = async (ws, trade) => {
   const contractType = call === 'call' ? 'CALL' : 'PUT';
 
   try {
-    // Notify via Telegram
-    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      chat_id: WHITEHAT_CHAT_ID,
-      text: `Placing trade for ${symbol} - Martingale Step: ${martingaleStep}, Stake: ${stake}`,
-    });
 
     console.log(`Placing trade: Symbol: ${symbol}, Step: ${martingaleStep}, Stake: ${stake}, Duration: ${duration}`);
     sendToWebSocket(ws, {
@@ -197,7 +189,6 @@ app.post('/webhook', async (req, res) => {
 
   if (trades.has(normalizedSymbol)) {
     console.log(`Trade for ${normalizedSymbol} is already in progress.`);
-    return res.status(200).send(`Trade for ${symbol} is already in progress.`);
   }
 
   const trade = {
