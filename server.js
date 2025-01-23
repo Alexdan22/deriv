@@ -189,6 +189,8 @@ const createWebSocket = () => {
   
     if (contract && contract.is_expired) {
       const symbol = contract.underlying.slice(3);
+      console.log(contract);
+      
   
       if (trades.has(symbol)) {
         console.log(`Trade completed for ${symbol}. Processing result...`);
@@ -196,8 +198,6 @@ const createWebSocket = () => {
       } else {
         console.warn(`Received trade result for unknown symbol: ${symbol}`);
       }
-    } else {
-      console.log('Contract is not expired or is invalid, skipping...');
     }
   }
   
