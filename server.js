@@ -178,25 +178,31 @@ const createWebSocket = () => {
   const response = JSON.parse(data);
 
   if (response.msg_type === 'proposal_open_contract') {
-    console.log('Open contract update received:', JSON.stringify(response, null, 2));;
-
-    const contract = response.proposal_open_contract;
-    
-    if(!contract.error){
-      
-      if (contract.is_expired) {
-        const symbol = contract.underlying.slice(3); // Extract symbol from "frxUSDJPY"
+    const isPingResponse = response.echo_req && response.echo_req.ping;
   
-        if (trades.has(symbol)) {
-          console.log(`Trade completed for ${symbol}. Processing result...`);
-          handleTradeResult(trades.get(symbol), contract);
-        } else {
-          console.warn(`Received trade result for unknown symbol: ${symbol}`);
-        }
-      }
+    if (isPingResponse) {
+      console.log('Received open contract response from ping. Skipping processing...');
+      return;
     }
-    
+  
+    const contract = response.proposal_open_contract;
+  
+    if (contract && contract.is_expired) {
+      const symbol = contract.underlying.slice(3);
+  
+      if (trades.has(symbol)) {
+        console.log(`Trade completed for ${symbol}. Processing result...`);
+        handleTradeResult(trades.get(symbol), contract);
+      } else {
+        console.warn(`Received trade result for unknown symbol: ${symbol}`);
+      }
+    } else {
+      console.log('Contract is not expired or is invalid, skipping...');
+    }
   }
+  
+  
+  
 });
 
 
