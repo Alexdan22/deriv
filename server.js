@@ -73,11 +73,10 @@ const getMinDuration = (ws, symbol) => {
 
 // Function to place a trade
 const placeTrade = async (ws, trade) => {
-  const { symbol, call, stake, duration, martingaleStep } = trade;
+  const { symbol, call, stake, duration } = trade;
   const contractType = call === 'call' ? 'CALL' : 'PUT';
   const placeholderKey = `${symbol}-placeholder`;
 
-  // Add a placeholder to the trades map
   trades.set(placeholderKey, { ...trade });
   console.log(`Placeholder added to trades: ${placeholderKey}`);
   console.log('Current trades map:', Array.from(trades.keys()));
@@ -93,16 +92,17 @@ const placeTrade = async (ws, trade) => {
         currency: 'USD',
         duration: duration,
         duration_unit: 'm',
-        symbol: symbol, // Correctly formatted symbol
+        symbol: symbol,
       },
     });
 
-    // Track the placeholder in pendingTrades (no contract_id yet)
     pendingTrades.set(placeholderKey, { symbol, placeholderKey });
+    console.log('Updated pendingTrades:', Array.from(pendingTrades.entries()));
   } catch (error) {
     console.error(`Error placing trade for ${symbol}:`, error);
   }
 };
+
 
 
 
@@ -167,12 +167,20 @@ const createWebSocket = () => {
     // Handle 'buy' response
     if (response.msg_type === 'buy') {
       const { contract_id, longcode } = response.buy;
-
     
-      // Match the trade context using the placeholder key
+      console.log('Buy response received:', JSON.stringify(response.buy, null, 2));
+    
+      if (!contract_id || !longcode) {
+        console.error('Buy response is missing required fields:', response.buy);
+        return;
+      }
+    
+      // Match trade context using longcode and pendingTrades
       const tradeContext = Array.from(pendingTrades.values()).find((context) =>
-        longcode.includes(context.symbol) // Match using the symbol in the longcode
+        longcode.includes(context.symbol)
       );
+    
+      console.log('Matched trade context:', tradeContext);
     
       if (!tradeContext) {
         console.warn(`Buy response received for unknown trade: Contract ID: ${contract_id}`);
@@ -182,22 +190,22 @@ const createWebSocket = () => {
       const { symbol, placeholderKey } = tradeContext;
       const uniqueKey = `${symbol}-${contract_id}`;
     
+      // Update trades map
       if (trades.has(placeholderKey)) {
         const trade = trades.get(placeholderKey);
     
-        // Replace the placeholder key with the unique key
-        trades.set(uniqueKey, trade);
-        trades.delete(placeholderKey);
+        trades.set(uniqueKey, trade); // Add the unique key
+        trades.delete(placeholderKey); // Remove the placeholder key
     
         console.log(`Trade updated in trades map: ${placeholderKey} -> ${uniqueKey}`);
         console.log('Updated trades map:', Array.from(trades.keys()));
     
-        // Remove the entry from pendingTrades
-        pendingTrades.delete(placeholderKey);
+        pendingTrades.delete(placeholderKey); // Remove from pendingTrades
       } else {
         console.warn(`Buy response received but placeholder key not found: ${placeholderKey}`);
       }
     }
+    
     
     
     
@@ -213,15 +221,16 @@ const createWebSocket = () => {
       }
     
       const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
+      console.log(`Processing open contract update for ${uniqueKey}`);
     
       if (trades.has(uniqueKey)) {
-        console.log(`Processing open contract update for ${uniqueKey}`);
         handleTradeResult(trades.get(uniqueKey), contract);
       } else {
         console.warn(`Open contract update received for unknown trade: ${uniqueKey}`);
         console.log('Current trades map:', Array.from(trades.keys()));
       }
     }
+    
     
     
     
