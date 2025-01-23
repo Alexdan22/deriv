@@ -88,7 +88,7 @@ const placeTrade = async (ws, trade) => {
         currency: 'USD',
         duration,
         duration_unit: 'm',
-        symbol: 'frx' + symbol,
+        symbol: symbol,
       },
     });
   } catch (error) {
