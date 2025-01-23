@@ -75,8 +75,11 @@ const placeTrade = async (ws, trade) => {
 
   const contractType = call === 'call' ? 'CALL' : 'PUT';
 
-  try {
+  // Add a placeholder entry in the trades map
+  const placeholderKey = `${symbol}-placeholder-${Date.now()}`;
+  trades.set(placeholderKey, trade);
 
+  try {
     console.log(`Placing trade: Symbol: ${symbol}, Step: ${martingaleStep}, Stake: ${stake}, Duration: ${duration}`);
     sendToWebSocket(ws, {
       buy: 1,
@@ -86,46 +89,58 @@ const placeTrade = async (ws, trade) => {
         basis: 'stake',
         contract_type: contractType,
         currency: 'USD',
-        duration,
+        duration: duration,
         duration_unit: 'm',
         symbol: symbol,
       },
     });
+
+    // Store placeholder key in the trade object
+    trade.placeholderKey = placeholderKey;
   } catch (error) {
     console.error(`Error placing trade for ${symbol}:`, error);
+    trades.delete(placeholderKey); // Remove placeholder if trade fails
   }
 };
 
+
 // Function to handle trade results
-const handleTradeResult = async (trade, contract) => {
-  const { symbol } = trade;
+const handleTradeResult = async (tradeKey, contract) => {
+  const trade = trades.get(tradeKey);
+  if (!trade) {
+    console.warn(`Trade result received for unknown tradeKey: ${tradeKey}`);
+    return;
+  }
+
+  console.log(`Processing trade result for ${tradeKey}:`, trade);
 
   if (contract.is_expired && contract.is_sold) {
     const tradePnL = contract.profit;
     trade.totalPnL += tradePnL;
 
     if (tradePnL > 0) {
-      console.log(`Trade for ${symbol} won. PnL: ${tradePnL.toFixed(2)} USD.`);
-      trades.delete(symbol); // Stop tracking this trade
+      console.log(`Trade for ${trade.symbol} won. PnL: ${tradePnL.toFixed(2)} USD.`);
+      trades.delete(tradeKey); // Stop tracking this trade
     } else {
       trade.martingaleStep++;
       if (trade.martingaleStep <= trade.maxMartingaleSteps) {
         trade.stake *= 2; // Double the stake
         console.log(
-          `Trade for ${symbol} lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
+          `Trade for ${trade.symbol} lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
         );
         placeTrade(ws, trade); // Place the next trade in the sequence
       } else {
         console.log(
-          `All Martingale steps for ${symbol} lost. Total PnL: ${trade.totalPnL.toFixed(
+          `All Martingale steps for ${trade.symbol} lost. Total PnL: ${trade.totalPnL.toFixed(
             2
           )} USD. Returning to idle state.`
         );
-        trades.delete(symbol); // Stop tracking this trade
+        trades.delete(tradeKey); // Stop tracking this trade
       }
     }
   }
 };
+
 
 // Function to create WebSocket connection
 const createWebSocket = () => {
@@ -144,25 +159,46 @@ const createWebSocket = () => {
 
   ws.on('message', (data) => {
     const response = JSON.parse(data);
-
+  
+    if (response.msg_type === 'buy') {
+      const { contract_id, longcode, symbol } = response.buy;
+  
+      // Find the placeholder entry
+      const placeholderKey = Array.from(trades.keys()).find((key) =>
+        key.startsWith(symbol) && key.includes('placeholder')
+      );
+      console.log(placeholderKey);
+      
+  
+      if (placeholderKey && trades.has(placeholderKey)) {
+        // Move trade to a new unique key
+        const trade = trades.get(placeholderKey);
+        const uniqueKey = `${symbol}-${contract_id}`;
+  
+        console.log(`Updating trade mapping: ${placeholderKey} -> ${uniqueKey}`);
+        trades.set(uniqueKey, trade);
+        trades.delete(placeholderKey); // Remove placeholder entry
+      } else {
+        console.warn(`Buy response received for unknown trade: Symbol: ${symbol}, Contract ID: ${contract_id}`);
+      }
+    }
+  
     if (response.msg_type === 'proposal_open_contract') {
       const contract = response.proposal_open_contract;
-
-      if (contract && contract.is_expired) {
-        const symbol = contract.underlying;
-
-        console.log('Keys in trades map:', Array.from(trades.keys()));
-        console.log('Extracted symbol:', symbol);
-
-        if (trades.has(symbol)) {
-          console.log(`Trade completed for ${symbol}. Processing result...`);
-          handleTradeResult(trades.get(symbol), contract);
+  
+      if (contract) {
+        const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
+  
+        if (trades.has(uniqueKey)) {
+          console.log(`Processing open contract update for ${uniqueKey}`);
+          handleTradeResult(uniqueKey, contract);
         } else {
-          console.warn(`Received trade result for unknown symbol: ${symbol}`);
+          console.warn(`Open contract update received for unknown trade: ${uniqueKey}`);
         }
       }
     }
   });
+  
 
   ws.on('close', () => {
     console.error('WebSocket connection closed. Reconnecting in 5 seconds...');
