@@ -96,7 +96,7 @@ const handleTradeResult = (trade, contract) => {
     trade.totalPnL += tradePnL;
 
     if (tradePnL > 0) {
-      console.log(`Trade for ${symbol} won. PnL: ${tradePnL.toFixed(2)} USD. Returning to idle state.`);
+      console.log(`Trade for ${symbol} won. PnL: ${tradePnL.toFixed(2)} USD.`);
       trades.delete(symbol); // Stop tracking this trade
     } else {
       trade.martingaleStep++;
@@ -108,7 +108,7 @@ const handleTradeResult = (trade, contract) => {
         placeTrade(ws, trade); // Place the next trade in the sequence
       } else {
         console.log(
-          `All Martingale steps for ${symbol} lost. Logging total PnL: ${trade.totalPnL.toFixed(
+          `All Martingale steps for ${symbol} lost. Total PnL: ${trade.totalPnL.toFixed(
             2
           )} USD. Returning to idle state.`
         );
@@ -130,7 +130,6 @@ const createWebSocket = () => {
     clearInterval(pingInterval); // Clear any existing intervals
     pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
-        // console.log('Sending ping to keep the connection alive.');
         ws.send(JSON.stringify({ ping: 1 }));
       }
     }, PING_INTERVAL);
@@ -157,10 +156,16 @@ const createWebSocket = () => {
 
     if (response.msg_type === 'proposal_open_contract') {
       const contract = response.proposal_open_contract;
-      const symbol = contract.symbol.slice(3); // Extract symbol from "frxUSDJPY"
 
-      if (trades.has(symbol)) {
-        handleTradeResult(trades.get(symbol), contract);
+      if (contract.is_expired) {
+        const symbol = contract.underlying.slice(3); // Extract symbol from "frxUSDJPY"
+
+        if (trades.has(symbol)) {
+          console.log(`Trade completed for ${symbol}. Processing result...`);
+          handleTradeResult(trades.get(symbol), contract);
+        } else {
+          console.warn(`Received trade result for unknown symbol: ${symbol}`);
+        }
       }
     }
 
