@@ -130,7 +130,7 @@ const createWebSocket = () => {
     clearInterval(pingInterval); // Clear any existing intervals
     pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
-        console.log('Sending ping to keep the connection alive.');
+        // console.log('Sending ping to keep the connection alive.');
         ws.send(JSON.stringify({ ping: 1 }));
       }
     }, PING_INTERVAL);
