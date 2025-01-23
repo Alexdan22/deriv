@@ -204,7 +204,7 @@ const createWebSocket = () => {
     }
   }
   else {
-    console.log(contract);
+    console.log(response);
     
   }
 });
