@@ -174,15 +174,19 @@ const createWebSocket = () => {
   ws.on('open', () => {
     console.log('Connected to Deriv API.');
     sendToWebSocket(ws, { authorize: API_TOKEN });
-
-    // Start sending periodic pings
-    clearInterval(pingInterval); // Clear any existing intervals
+  
+    // Subscribe to all open contracts
+    sendToWebSocket(ws, { proposal_open_contract: 1, subscribe: 1 });
+  
+    // Start periodic pings
+    clearInterval(pingInterval);
     pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ ping: 1 }));
       }
     }, PING_INTERVAL);
   });
+  
 
   ws.on('message', (data) => {
   const response = JSON.parse(data);
