@@ -175,24 +175,27 @@ const createWebSocket = () => {
     console.log('Connected to Deriv API.');
     sendToWebSocket(ws, { authorize: API_TOKEN });
   
-    // Subscribe to all open contracts
-    sendToWebSocket(ws, { proposal_open_contract: 1, subscribe: 1 });
-  
-    // Start periodic pings
-    clearInterval(pingInterval);
+    // Start periodic pings and contract subscription
+    clearInterval(pingInterval); // Clear any existing intervals
     pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
+        // Send a ping to keep the connection alive
         ws.send(JSON.stringify({ ping: 1 }));
+  
+        // Subscribe to all open contracts
+        ws.send(JSON.stringify({ proposal_open_contract: 1, subscribe: 1 }));
+        console.log('Ping sent and subscribed to all open contracts.');
       }
     }, PING_INTERVAL);
   });
+  
   
 
   ws.on('message', (data) => {
   const response = JSON.parse(data);
 
   if (response.msg_type === 'proposal_open_contract') {
-    console.log('Received contract proposal:', JSON.stringify(response, null, 2));
+    console.log('Open contract update received:', JSON.stringify(response, null, 2));;
 
     const contract = response.proposal_open_contract;
     console.log(contract);
