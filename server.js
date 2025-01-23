@@ -76,12 +76,12 @@ const placeTrade = async (ws, trade) => {
   const contractType = call === 'call' ? 'CALL' : 'PUT';
   const placeholderKey = `${symbol}-placeholder`;
 
-  // Store a placeholder entry in trades
+  // Add a placeholder entry to the trades map
   trades.set(placeholderKey, { ...trade });
   console.log(`Placeholder added to trades: ${placeholderKey}`);
+  console.log('Current trades map:', Array.from(trades.keys()));
 
   try {
-    console.log(`Placing trade: Symbol: ${symbol}, Step: ${martingaleStep}, Stake: ${stake}, Duration: ${duration}`);
     sendToWebSocket(ws, {
       buy: 1,
       price: stake,
@@ -92,13 +92,14 @@ const placeTrade = async (ws, trade) => {
         currency: 'USD',
         duration: duration,
         duration_unit: 'm',
-        symbol: symbol,
+        symbol: symbol, // Correctly formatted symbol
       },
     });
   } catch (error) {
     console.error(`Error placing trade for ${symbol}:`, error);
   }
 };
+
 
 
 
@@ -173,7 +174,7 @@ const createWebSocket = () => {
       if (trades.has(placeholderKey)) {
         const trade = trades.get(placeholderKey);
     
-        // Replace placeholder key with the unique key
+        // Replace the placeholder key with the unique key
         trades.set(uniqueKey, trade);
         trades.delete(placeholderKey);
     
@@ -184,6 +185,7 @@ const createWebSocket = () => {
         console.log('Current trades map:', Array.from(trades.keys()));
       }
     }
+    
     
     
   
@@ -206,6 +208,7 @@ const createWebSocket = () => {
         console.log('Current trades map:', Array.from(trades.keys()));
       }
     }
+    
     
     
   });
