@@ -203,6 +203,10 @@ const createWebSocket = () => {
       }
     }
   }
+  else {
+    console.log(contract);
+    
+  }
 });
 
 
