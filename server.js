@@ -160,34 +160,39 @@ const createWebSocket = () => {
   ws.on('message', (data) => {
     const response = JSON.parse(data);
   
+    // Handle 'buy' response
     if (response.msg_type === 'buy') {
-      const { contract_id, longcode, symbol } = response.buy;
+      const { contract_id, longcode } = response.buy;
+      const symbol = response.buy.underlying; // Use underlying instead of symbol
   
-      // Find the placeholder entry
-      const placeholderKey = Array.from(trades.keys()).find((key) =>
-        key.startsWith(symbol) && key.includes('placeholder')
-      );
-      console.log(placeholderKey);
-      
+      if (symbol && contract_id) {
+        // Find the placeholder entry
+        const placeholderKey = Array.from(trades.keys()).find((key) =>
+          key.startsWith(symbol) && key.includes('placeholder')
+        );
   
-      if (placeholderKey && trades.has(placeholderKey)) {
-        // Move trade to a new unique key
-        const trade = trades.get(placeholderKey);
-        const uniqueKey = `${symbol}-${contract_id}`;
+        if (placeholderKey && trades.has(placeholderKey)) {
+          // Move trade to a new unique key
+          const trade = trades.get(placeholderKey);
+          const uniqueKey = `${symbol}-${contract_id}`;
   
-        console.log(`Updating trade mapping: ${placeholderKey} -> ${uniqueKey}`);
-        trades.set(uniqueKey, trade);
-        trades.delete(placeholderKey); // Remove placeholder entry
+          console.log(`Updating trade mapping: ${placeholderKey} -> ${uniqueKey}`);
+          trades.set(uniqueKey, trade);
+          trades.delete(placeholderKey); // Remove placeholder entry
+        } else {
+          console.warn(`Buy response received for unknown trade: Symbol: ${symbol}, Contract ID: ${contract_id}`);
+        }
       } else {
-        console.warn(`Buy response received for unknown trade: Symbol: ${symbol}, Contract ID: ${contract_id}`);
+        console.error('Buy response missing required fields: ', response.buy);
       }
     }
   
+    // Handle 'proposal_open_contract' response
     if (response.msg_type === 'proposal_open_contract') {
       const contract = response.proposal_open_contract;
   
       if (contract) {
-        const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
+        const uniqueKey = `${contract.underlying}-${contract.contract_id}`; // Use contract.underlying
   
         if (trades.has(uniqueKey)) {
           console.log(`Processing open contract update for ${uniqueKey}`);
@@ -195,9 +200,12 @@ const createWebSocket = () => {
         } else {
           console.warn(`Open contract update received for unknown trade: ${uniqueKey}`);
         }
+      } else {
+        console.error('Proposal open contract missing required fields: ', response);
       }
     }
   });
+  
   
 
   ws.on('close', () => {
