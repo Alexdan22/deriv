@@ -162,42 +162,51 @@ const createWebSocket = () => {
     if (response.msg_type === 'buy') {
       const { contract_id, underlying: symbol } = response.buy;
     
-      if (symbol && contract_id) {
-        const placeholderKey = `${symbol}-placeholder`;
-        const uniqueKey = `${symbol}-${contract_id}`;
+      if (!symbol || !contract_id) {
+        console.error('Buy response is missing required fields:', response.buy);
+        return;
+      }
     
-        if (trades.has(placeholderKey)) {
-          // Replace the placeholder with the unique key
-          const trade = trades.get(placeholderKey);
-          trades.set(uniqueKey, trade);
-          trades.delete(placeholderKey);
-          console.log(`Trade updated in trades map: ${placeholderKey} -> ${uniqueKey}`);
-        } else {
-          console.warn(`Buy response received for unknown trade: Symbol: ${symbol}, Contract ID: ${contract_id}`);
-        }
+      const placeholderKey = `${symbol}-placeholder`;
+      const uniqueKey = `${symbol}-${contract_id}`;
+    
+      if (trades.has(placeholderKey)) {
+        const trade = trades.get(placeholderKey);
+    
+        // Replace placeholder key with the unique key
+        trades.set(uniqueKey, trade);
+        trades.delete(placeholderKey);
+    
+        console.log(`Trade updated in trades map: ${placeholderKey} -> ${uniqueKey}`);
+        console.log('Updated trades map:', Array.from(trades.keys()));
       } else {
-        console.error('Buy response missing required fields: ', response.buy);
+        console.warn(`Buy response received for unknown trade: Symbol: ${symbol}, Contract ID: ${contract_id}`);
+        console.log('Current trades map:', Array.from(trades.keys()));
       }
     }
+    
     
   
     // Handle 'proposal_open_contract' response
     if (response.msg_type === 'proposal_open_contract') {
       const contract = response.proposal_open_contract;
     
-      if (contract) {
-        const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
+      if (!contract || !contract.underlying || !contract.contract_id) {
+        console.error('Proposal open contract is missing required fields:', contract);
+        return;
+      }
     
-        if (trades.has(uniqueKey)) {
-          console.log(`Processing open contract update for ${uniqueKey}`);
-          handleTradeResult(trades.get(uniqueKey), contract);
-        } else {
-          console.warn(`Open contract update received for unknown trade: ${uniqueKey}`);
-        }
+      const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
+    
+      if (trades.has(uniqueKey)) {
+        console.log(`Processing open contract update for ${uniqueKey}`);
+        handleTradeResult(trades.get(uniqueKey), contract);
       } else {
-        console.error('Proposal open contract missing required fields: ', response);
+        console.warn(`Open contract update received for unknown trade: ${uniqueKey}`);
+        console.log('Current trades map:', Array.from(trades.keys()));
       }
     }
+    
     
   });
   
