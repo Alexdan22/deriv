@@ -74,10 +74,11 @@ const placeTrade = async (ws, trade) => {
   const { symbol, call, stake, duration, martingaleStep } = trade;
 
   const contractType = call === 'call' ? 'CALL' : 'PUT';
+  const placeholderKey = `${symbol}-placeholder`;
 
-  // Add a placeholder entry in the trades map
-  const placeholderKey = `${symbol}-placeholder-${Date.now()}`;
-  trades.set(placeholderKey, trade);
+  // Store a placeholder entry in trades
+  trades.set(placeholderKey, { ...trade });
+  console.log(`Placeholder added to trades: ${placeholderKey}`);
 
   try {
     console.log(`Placing trade: Symbol: ${symbol}, Step: ${martingaleStep}, Stake: ${stake}, Duration: ${duration}`);
@@ -94,14 +95,11 @@ const placeTrade = async (ws, trade) => {
         symbol: symbol,
       },
     });
-
-    // Store placeholder key in the trade object
-    trade.placeholderKey = placeholderKey;
   } catch (error) {
     console.error(`Error placing trade for ${symbol}:`, error);
-    trades.delete(placeholderKey); // Remove placeholder if trade fails
   }
 };
+
 
 
 // Function to handle trade results
@@ -162,23 +160,18 @@ const createWebSocket = () => {
   
     // Handle 'buy' response
     if (response.msg_type === 'buy') {
-      const { contract_id, longcode } = response.buy;
-      const symbol = response.buy.underlying; // Use underlying instead of symbol
-  
+      const { contract_id, underlying: symbol } = response.buy;
+    
       if (symbol && contract_id) {
-        // Find the placeholder entry
-        const placeholderKey = Array.from(trades.keys()).find((key) =>
-          key.startsWith(symbol) && key.includes('placeholder')
-        );
-  
-        if (placeholderKey && trades.has(placeholderKey)) {
-          // Move trade to a new unique key
+        const placeholderKey = `${symbol}-placeholder`;
+        const uniqueKey = `${symbol}-${contract_id}`;
+    
+        if (trades.has(placeholderKey)) {
+          // Replace the placeholder with the unique key
           const trade = trades.get(placeholderKey);
-          const uniqueKey = `${symbol}-${contract_id}`;
-  
-          console.log(`Updating trade mapping: ${placeholderKey} -> ${uniqueKey}`);
           trades.set(uniqueKey, trade);
-          trades.delete(placeholderKey); // Remove placeholder entry
+          trades.delete(placeholderKey);
+          console.log(`Trade updated in trades map: ${placeholderKey} -> ${uniqueKey}`);
         } else {
           console.warn(`Buy response received for unknown trade: Symbol: ${symbol}, Contract ID: ${contract_id}`);
         }
@@ -186,17 +179,18 @@ const createWebSocket = () => {
         console.error('Buy response missing required fields: ', response.buy);
       }
     }
+    
   
     // Handle 'proposal_open_contract' response
     if (response.msg_type === 'proposal_open_contract') {
       const contract = response.proposal_open_contract;
-  
+    
       if (contract) {
-        const uniqueKey = `${contract.underlying}-${contract.contract_id}`; // Use contract.underlying
-  
+        const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
+    
         if (trades.has(uniqueKey)) {
           console.log(`Processing open contract update for ${uniqueKey}`);
-          handleTradeResult(uniqueKey, contract);
+          handleTradeResult(trades.get(uniqueKey), contract);
         } else {
           console.warn(`Open contract update received for unknown trade: ${uniqueKey}`);
         }
@@ -204,6 +198,7 @@ const createWebSocket = () => {
         console.error('Proposal open contract missing required fields: ', response);
       }
     }
+    
   });
   
   
