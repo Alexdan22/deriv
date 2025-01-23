@@ -7,7 +7,7 @@ const API_TOKEN = 'VX41WSwVGQDET3r'; // Replace with your Deriv API token
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 
 const TELEGRAM_BOT_TOKEN = '7834723053:AAE3oqsuPQyo5rqTOsHL_pwnF2zyN-Qv1GI';
-const WHITEHAT_CHAT_ID = '1889378485'
+const WHITEHAT_CHAT_ID = '1889378485';
 
 const app = express();
 app.use(bodyParser.json());
@@ -18,12 +18,30 @@ let ws; // WebSocket instance
 const PING_INTERVAL = 30000; // Send a ping every 30 seconds
 let pingInterval; // Store the interval ID
 
-// Function to send data to WebSocket
+// Helper function: Send data to WebSocket
 const sendToWebSocket = (ws, data) => {
-  ws.send(JSON.stringify(data));
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+  } else {
+    console.warn('WebSocket is not open. Data not sent:', data);
+  }
 };
 
-// Function to fetch minimum duration
+// Helper function: Parse durations
+const parseDuration = (duration) => {
+  const unit = duration.slice(-1);
+  const value = parseInt(duration.slice(0, -1), 10);
+  switch (unit) {
+    case 't': return value;
+    case 's': return value / 60;
+    case 'm': return value;
+    case 'h': return value * 60;
+    case 'd': return value * 1440;
+    default: return Infinity;
+  }
+};
+
+// Function to fetch minimum duration for a symbol
 const getMinDuration = (ws, symbol) => {
   return new Promise((resolve, reject) => {
     const listener = (event) => {
@@ -47,27 +65,11 @@ const getMinDuration = (ws, symbol) => {
 
     ws.addEventListener('message', listener);
 
-    ws.send(
-      JSON.stringify({
-        contracts_for: symbol,
-        currency: 'USD',
-      })
-    );
+    sendToWebSocket(ws, {
+      contracts_for: symbol,
+      currency: 'USD',
+    });
   });
-};
-
-// Helper function to parse durations (e.g., "1m" => 1 minute)
-const parseDuration = (duration) => {
-  const unit = duration.slice(-1);
-  const value = parseInt(duration.slice(0, -1), 10);
-  switch (unit) {
-    case 't': return value;
-    case 's': return value / 60;
-    case 'm': return value;
-    case 'h': return value * 60;
-    case 'd': return value * 1440;
-    default: return Infinity;
-  }
 };
 
 // Function to place a trade
@@ -77,17 +79,12 @@ const placeTrade = async (ws, trade) => {
   const contractType = call === 'call' ? 'CALL' : 'PUT';
 
   try {
-    // Send the message to Telegram
+    // Notify via Telegram
     await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       chat_id: WHITEHAT_CHAT_ID,
-      text: `Placing trade for ${symbol} - Martingale Step: ${trade.martingaleStep}, Stake: ${stake}`,
+      text: `Placing trade for ${symbol} - Martingale Step: ${martingaleStep}, Stake: ${stake}`,
     });
-    console.log(`Telegram alert sent: Placing trade for ${symbol} - Stake: ${stake}`);
-  } catch (err) {
-    console.error(`Error sending Telegram alert: ${err.message}`);
-  }
 
-  try {
     console.log(`Placing trade: Symbol: ${symbol}, Step: ${martingaleStep}, Stake: ${stake}, Duration: ${duration}`);
     sendToWebSocket(ws, {
       buy: 1,
@@ -97,7 +94,7 @@ const placeTrade = async (ws, trade) => {
         basis: 'stake',
         contract_type: contractType,
         currency: 'USD',
-        duration: duration,
+        duration,
         duration_unit: 'm',
         symbol: 'frx' + symbol,
       },
@@ -107,14 +104,9 @@ const placeTrade = async (ws, trade) => {
   }
 };
 
-
-
 // Function to handle trade results
 const handleTradeResult = async (trade, contract) => {
-  console.log(trade);
-  
   const { symbol } = trade;
-
 
   if (contract.is_expired && contract.is_sold) {
     const tradePnL = contract.profit;
@@ -143,62 +135,46 @@ const handleTradeResult = async (trade, contract) => {
   }
 };
 
-
-
-
-
-// Function to create a WebSocket connection
+// Function to create WebSocket connection
 const createWebSocket = () => {
   ws = new WebSocket(WEBSOCKET_URL);
 
   ws.on('open', () => {
     console.log('Connected to Deriv API.');
     sendToWebSocket(ws, { authorize: API_TOKEN });
-  
-    // Start periodic pings and contract subscription
+
     clearInterval(pingInterval); // Clear any existing intervals
     pingInterval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        // Send a ping to keep the connection alive
-        ws.send(JSON.stringify({ ping: 1 }));
-  
-        // Subscribe to all open contracts
-        ws.send(JSON.stringify({ proposal_open_contract: 1, subscribe: 1 }));
-      }
+      sendToWebSocket(ws, { ping: 1 });
+      sendToWebSocket(ws, { proposal_open_contract: 1, subscribe: 1 });
     }, PING_INTERVAL);
   });
-  
-  
 
   ws.on('message', (data) => {
-  const response = JSON.parse(data);
+    const response = JSON.parse(data);
 
-  if (response.msg_type === 'proposal_open_contract') {
-  
-    const contract = response.proposal_open_contract;
-  
-    if (contract && contract.is_expired) {
-      const symbol = contract.underlying.slice(3);
-      console.log(contract);
-      
-  
-      if (trades.has(symbol)) {
-        console.log(`Trade completed for ${symbol}. Processing result...`);
-        handleTradeResult(trades.get(symbol), contract);
-      } else {
-        console.warn(`Received trade result for unknown symbol: ${symbol}`);
+    if (response.msg_type === 'proposal_open_contract') {
+      const contract = response.proposal_open_contract;
+
+      if (contract && contract.is_expired) {
+        const symbol = contract.underlying;
+
+        console.log('Keys in trades map:', Array.from(trades.keys()));
+        console.log('Extracted symbol:', symbol);
+
+        if (trades.has(symbol)) {
+          console.log(`Trade completed for ${symbol}. Processing result...`);
+          handleTradeResult(trades.get(symbol), contract);
+        } else {
+          console.warn(`Received trade result for unknown symbol: ${symbol}`);
+        }
       }
     }
-  }
-  
-  
-  
-});
-
+  });
 
   ws.on('close', () => {
     console.error('WebSocket connection closed. Reconnecting in 5 seconds...');
-    clearInterval(pingInterval); // Stop pinging when the connection is closed
+    clearInterval(pingInterval);
     setTimeout(createWebSocket, 5000);
   });
 
@@ -206,9 +182,6 @@ const createWebSocket = () => {
     console.error('WebSocket error:', error);
   });
 };
-
-// Start WebSocket connection
-createWebSocket();
 
 // Webhook listener for TradingView alerts
 app.post('/webhook', async (req, res) => {
@@ -236,12 +209,8 @@ app.post('/webhook', async (req, res) => {
   trades.set(symbol, trade);
 
   try {
-    console.log('Fetching minimum duration...');
     const minDuration = await getMinDuration(ws, 'frx' + symbol);
-    console.log(`Minimum duration for ${symbol}: ${minDuration} minutes`);
     trade.duration = minDuration;
-
-    console.log('Placing initial trade...');
     placeTrade(ws, trade);
   } catch (error) {
     console.error('Error processing alert:', error);
@@ -256,3 +225,6 @@ const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`TradingView webhook listener running on port ${PORT}`);
 });
+
+// Start WebSocket connection
+createWebSocket();
