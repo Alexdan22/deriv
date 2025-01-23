@@ -10,6 +10,8 @@ const app = express();
 app.use(bodyParser.json());
 
 const trades = new Map(); // Track each trade by its symbol or unique ID
+const pendingTrades = new Map(); // Map to track contract_id -> { symbol, placeholderKey }
+
 
 let ws; // WebSocket instance
 const PING_INTERVAL = 30000; // Send a ping every 30 seconds
