@@ -188,17 +188,20 @@ app.post('/webhook', async (req, res) => {
   const { symbol, call } = req.body;
 
   if (!symbol || !call) {
+    console.error('Invalid webhook payload:', req.body);
     return res.status(400).send('Invalid webhook payload');
   }
 
-  if (trades.has(symbol)) {
+  const normalizedSymbol = symbol.replace('frx', ''); // Normalize symbol
+  console.log(`Webhook received for symbol: ${normalizedSymbol}, call: ${call}`);
+
+  if (trades.has(normalizedSymbol)) {
+    console.log(`Trade for ${normalizedSymbol} is already in progress.`);
     return res.status(200).send(`Trade for ${symbol} is already in progress.`);
   }
 
-  console.log(`Received alert for ${symbol} - Call: ${call}`);
-
   const trade = {
-    symbol,
+    symbol: normalizedSymbol,
     call,
     stake: 10, // Initial stake
     martingaleStep: 0,
@@ -206,19 +209,23 @@ app.post('/webhook', async (req, res) => {
     totalPnL: 0,
   };
 
-  trades.set(symbol, trade);
+  trades.set(normalizedSymbol, trade);
+  console.log('Updated trades map:', Array.from(trades.keys())); // Log trades map after update
 
   try {
-    const minDuration = await getMinDuration(ws, 'frx' + symbol);
+    const minDuration = await getMinDuration(ws, 'frx' + normalizedSymbol); // Add 'frx' for WebSocket request
     trade.duration = minDuration;
+
+    console.log(`Minimum duration for ${normalizedSymbol}: ${minDuration}`);
     placeTrade(ws, trade);
   } catch (error) {
     console.error('Error processing alert:', error);
-    trades.delete(symbol);
+    trades.delete(normalizedSymbol);
   }
 
   res.status(200).send('Webhook received and trade initiated.');
 });
+
 
 // Start the server
 const PORT = 3000;
