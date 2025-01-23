@@ -164,7 +164,6 @@ const createWebSocket = () => {
   
         // Subscribe to all open contracts
         ws.send(JSON.stringify({ proposal_open_contract: 1, subscribe: 1 }));
-        console.log('Ping sent and subscribed to all open contracts.');
       }
     }, PING_INTERVAL);
   });
