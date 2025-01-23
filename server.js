@@ -184,7 +184,7 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send('Invalid webhook payload');
   }
 
-  const normalizedSymbol = symbol.replace('frx', ''); // Normalize symbol
+  const normalizedSymbol = 'frx' + symbol; // Normalize symbol
   console.log(`Webhook received for symbol: ${normalizedSymbol}, call: ${call}`);
 
   if (trades.has(normalizedSymbol)) {
@@ -204,7 +204,7 @@ app.post('/webhook', async (req, res) => {
   console.log('Updated trades map:', Array.from(trades.keys())); // Log trades map after update
 
   try {
-    const minDuration = await getMinDuration(ws, 'frx' + normalizedSymbol); // Add 'frx' for WebSocket request
+    const minDuration = await getMinDuration(ws, normalizedSymbol); // Add 'frx' for WebSocket request
     trade.duration = minDuration;
 
     console.log(`Minimum duration for ${normalizedSymbol}: ${minDuration}`);
