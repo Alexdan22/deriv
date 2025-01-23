@@ -72,7 +72,7 @@ const parseDuration = (duration) => {
 
 // Function to place a trade
 const placeTrade = async (ws, trade) => {
-  const { symbol, call, stake } = trade;
+  const { symbol, call, stake, duration, martingaleStep } = trade;
 
   const contractType = call === 'call' ? 'CALL' : 'PUT';
 
@@ -87,21 +87,26 @@ const placeTrade = async (ws, trade) => {
     console.error(`Error sending Telegram alert: ${err.message}`);
   }
 
-  console.log(`Placing trade for ${symbol} - Martingale Step: ${trade.martingaleStep}, Stake: ${stake}`);
-  sendToWebSocket(ws, {
-    buy: 1,
-    price: stake,
-    parameters: {
-      amount: stake,
-      basis: 'stake',
-      contract_type: contractType,
-      currency: 'USD',
-      duration: trade.duration,
-      duration_unit: 'm',
-      symbol: 'frx' + symbol,
-    },
-  });
+  try {
+    console.log(`Placing trade: Symbol: ${symbol}, Step: ${martingaleStep}, Stake: ${stake}, Duration: ${duration}`);
+    sendToWebSocket(ws, {
+      buy: 1,
+      price: stake,
+      parameters: {
+        amount: stake,
+        basis: 'stake',
+        contract_type: contractType,
+        currency: 'USD',
+        duration: duration,
+        duration_unit: 'm',
+        symbol: 'frx' + symbol,
+      },
+    });
+  } catch (error) {
+    console.error(`Error placing trade for ${symbol}:`, error);
+  }
 };
+
 
 
 // Function to handle trade results
@@ -119,6 +124,12 @@ const handleTradeResult = async (trade, contract) => {
     console.error(`Error sending Telegram alert: ${err.message}`);
   }
 
+  // Ensure we only process results for trades still being tracked
+  if (!trades.has(symbol)) {
+    console.warn(`Trade result received for unknown or completed trade: ${symbol}`);
+    return;
+  }
+
   if (contract.status === 'sold') {
     const tradePnL = contract.profit;
     trade.totalPnL += tradePnL;
@@ -128,23 +139,32 @@ const handleTradeResult = async (trade, contract) => {
       trades.delete(symbol); // Stop tracking this trade
     } else {
       trade.martingaleStep++;
+      console.log(
+        `Trade for ${symbol} lost. Current martingale step: ${trade.martingaleStep}. Max steps allowed: ${trade.maxMartingaleSteps}.`
+      );
+
+      // Check if we can proceed to the next martingale step
       if (trade.martingaleStep <= trade.maxMartingaleSteps) {
         trade.stake *= 2; // Double the stake
         console.log(
-          `Trade for ${symbol} lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
+          `Entering Martingale step ${trade.martingaleStep} for ${symbol} with new stake: ${trade.stake}`
         );
         placeTrade(ws, trade); // Place the next trade in the sequence
       } else {
         console.log(
           `All Martingale steps for ${symbol} lost. Total PnL: ${trade.totalPnL.toFixed(
             2
-          )} USD. Returning to idle state.`
+          )} USD. Stopping Martingale strategy.`
         );
         trades.delete(symbol); // Stop tracking this trade
       }
     }
+  } else {
+    console.warn(`Unexpected contract status: ${contract.status}`);
   }
 };
+
+
 
 
 // Function to create a WebSocket connection
@@ -165,43 +185,26 @@ const createWebSocket = () => {
   });
 
   ws.on('message', (data) => {
-    const response = JSON.parse(data);
+  const response = JSON.parse(data);
 
-    if (response.msg_type === 'authorize') {
-      console.log('Authorized and ready to receive alerts.');
-    }
+  if (response.msg_type === 'proposal_open_contract') {
+    console.log('Received contract proposal:', JSON.stringify(response, null, 2));
 
-    if (response.msg_type === 'buy') {
-      if (response.error) {
-        console.error('Error placing trade:', response.error.message);
-        const symbol = response.error.symbol;
-        if (symbol && trades.has(symbol)) {
-          trades.delete(symbol);
-        }
+    const contract = response.proposal_open_contract;
+
+    if (contract.is_expired) {
+      const symbol = contract.underlying.slice(3); // Extract symbol from "frxUSDJPY"
+
+      if (trades.has(symbol)) {
+        console.log(`Trade completed for ${symbol}. Processing result...`);
+        handleTradeResult(trades.get(symbol), contract);
       } else {
-        console.log('Trade placed successfully:', response.buy);
+        console.warn(`Received trade result for unknown symbol: ${symbol}`);
       }
     }
+  }
+});
 
-    if (response.msg_type === 'proposal_open_contract') {
-      const contract = response.proposal_open_contract;
-
-      if (contract.is_expired) {
-        const symbol = contract.underlying.slice(3); // Extract symbol from "frxUSDJPY"
-
-        if (trades.has(symbol)) {
-          console.log(`Trade completed for ${symbol}. Processing result...`);
-          handleTradeResult(trades.get(symbol), contract);
-        } else {
-          console.warn(`Received trade result for unknown symbol: ${symbol}`);
-        }
-      }
-    }
-
-    if (response.msg_type === 'error') {
-      console.error('Error:', response.error.message);
-    }
-  });
 
   ws.on('close', () => {
     console.error('WebSocket connection closed. Reconnecting in 5 seconds...');
