@@ -111,13 +111,10 @@ const placeTrade = async (ws, trade) => {
 
 // Function to handle trade results
 const handleTradeResult = async (trade, contract) => {
+  console.log(trade);
+  
   const { symbol } = trade;
 
-  // Send the message to Telegram
-  await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    chat_id: WHITEHAT_CHAT_ID,
-    text: JSON.stringify(contract, null, 2),
-  });
 
   if (contract.is_expired && contract.is_sold) {
     const tradePnL = contract.profit;
@@ -178,12 +175,6 @@ const createWebSocket = () => {
   const response = JSON.parse(data);
 
   if (response.msg_type === 'proposal_open_contract') {
-    const isPingResponse = response.echo_req && response.echo_req.ping;
-  
-    if (isPingResponse) {
-      console.log('Received open contract response from ping. Skipping processing...');
-      return;
-    }
   
     const contract = response.proposal_open_contract;
   
