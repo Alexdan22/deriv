@@ -166,18 +166,18 @@ const createWebSocket = () => {
   
     // Handle 'buy' response
     if (response.msg_type === 'buy') {
-      const { contract_id, longcode } = response.buy;
+      const { contract_id, shortcode } = response.buy;
     
       console.log('Buy response received:', JSON.stringify(response.buy, null, 2));
     
-      if (!contract_id || !longcode) {
+      if (!contract_id || !shortcode) {
         console.error('Buy response is missing required fields:', response.buy);
         return;
       }
     
-      // Match trade context using longcode and pendingTrades
+      // Match trade context using shortcode and pendingTrades
       const tradeContext = Array.from(pendingTrades.values()).find((context) =>
-        longcode.includes(context.symbol)
+        shortcode.includes(context.symbol)
       );
     
       console.log('Matched trade context:', tradeContext);
