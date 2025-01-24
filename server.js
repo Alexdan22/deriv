@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const WebSocket = require('ws');
 const axios = require('axios');
 
-const API_TOKEN = 'VX41WSwVGQDET3r'; // Replace with your Deriv API token
+const API_TOKEN = '44TRhSy7NFXLsSl'; // Replace with your Deriv API token
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 
 const app = express();
