@@ -218,7 +218,7 @@ const createWebSocket = () => {
     
       const uniqueKey = `${contract.underlying}-${contract.contract_id}`; 
     
-      if (trades.has(uniqueKey)) {
+      if (trades.has(uniqueKey) && contract.status !== 'open') {
         handleTradeResult(trades.get(uniqueKey), contract);
       }
     }
