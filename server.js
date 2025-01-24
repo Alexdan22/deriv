@@ -119,7 +119,7 @@ const handleTradeResult = async (tradeKey, contract) => {
 
   console.log(`Processing trade result for ${tradeKey}:`, trade);
 
-  if (contract.is_expired && contract.is_sold) {
+  if (contract.is_expired || contract.is_sold) {
     const tradePnL = contract.profit;
     trade.totalPnL += tradePnL;
 
@@ -169,12 +169,7 @@ const createWebSocket = () => {
     if (response.msg_type === 'buy') {
       const { contract_id, longcode, shortcode } = response.buy;
     
-      console.log('Buy response received:', JSON.stringify(response.buy, null, 2));
     
-      if (!contract_id || !longcode || !shortcode) {
-        console.error('Buy response is missing required fields:', response.buy);
-        return;
-      }
     
       // Match trade context using the placeholder key or sliced symbol
       const tradeContext = Array.from(pendingTrades.entries()).find(([placeholderKey, context]) => {
@@ -182,12 +177,8 @@ const createWebSocket = () => {
         return shortcode.includes(slicedSymbol); // Check if sliced symbol is in shortcode
       });
     
-      console.log('Matched trade context:', tradeContext);
     
-      if (!tradeContext) {
-        console.warn(`Buy response received for unknown trade: Contract ID: ${contract_id}`);
-        return;
-      }
+     
     
       const [placeholderKey, { symbol: matchedSymbol }] = tradeContext;
       const uniqueKey = `${matchedSymbol}-${contract_id}`;
@@ -219,31 +210,12 @@ const createWebSocket = () => {
     if (response.msg_type === 'proposal_open_contract') {
       const contract = response.proposal_open_contract;
     
-      if (!contract || !contract.underlying || !contract.contract_id) {
-        console.error('Proposal open contract is missing required fields:', contract);
-        return;
-      }
-      console.log('Open contract response:', JSON.stringify(response, null, 2));
-
-      if (!contract) {
-        console.error('Open contract response is missing contract details:', response);
-        return;
-      }
-
-      console.log('Contract ID:', contract.contract_id);
-      console.log('Symbol:', contract.underlying);
-      console.log('Profit:', contract.profit);
-
 
     
-      const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
-      console.log(`Processing open contract update for ${uniqueKey}`);
+      const uniqueKey = `${contract.underlying}-${contract.contract_id}`; 
     
       if (trades.has(uniqueKey)) {
         handleTradeResult(trades.get(uniqueKey), contract);
-      } else {
-        console.warn(`Open contract update received for unknown trade: ${uniqueKey}`);
-        console.log('Current trades map:', Array.from(trades.keys()));
       }
     }
     
