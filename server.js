@@ -223,6 +223,18 @@ const createWebSocket = () => {
         console.error('Proposal open contract is missing required fields:', contract);
         return;
       }
+      console.log('Open contract response:', JSON.stringify(response, null, 2));
+
+      if (!contract) {
+        console.error('Open contract response is missing contract details:', response);
+        return;
+      }
+
+      console.log('Contract ID:', contract.contract_id);
+      console.log('Symbol:', contract.underlying);
+      console.log('Profit:', contract.profit);
+
+
     
       const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
       console.log(`Processing open contract update for ${uniqueKey}`);
