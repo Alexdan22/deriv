@@ -113,7 +113,6 @@ const placeTrade = async (ws, trade) => {
 const handleTradeResult = async (tradeKey, contract) => {
   const trade = trades.get(tradeKey);
   if (!trade) {
-    console.warn(`Trade result received for unknown tradeKey: ${tradeKey}`);
     return;
   }
 
