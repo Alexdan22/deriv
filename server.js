@@ -108,6 +108,7 @@ const placeTrade = async (ws, trade) => {
 
 
 
+
 // Function to handle trade results
 const handleTradeResult = async (tradeKey, contract) => {
   const trade = trades.get(tradeKey);
@@ -210,6 +211,7 @@ const createWebSocket = () => {
     
     
     
+    
   
     // Handle 'proposal_open_contract' response
     if (response.msg_type === 'proposal_open_contract') {
@@ -230,6 +232,7 @@ const createWebSocket = () => {
         console.log('Current trades map:', Array.from(trades.keys()));
       }
     }
+    
     
     
     
