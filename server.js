@@ -210,6 +210,10 @@ const createWebSocket = () => {
     if (response.msg_type === 'proposal_open_contract') {
       const contract = response.proposal_open_contract;
     
+      if (!contract || !contract.underlying || !contract.contract_id) {
+        console.error('Proposal open contract is missing required fields');
+        return;
+      }
 
     
       const uniqueKey = `${contract.underlying}-${contract.contract_id}`; 
