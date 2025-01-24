@@ -167,19 +167,20 @@ const createWebSocket = () => {
   
     // Handle 'buy' response
     if (response.msg_type === 'buy') {
-      const { contract_id, shortcode } = response.buy;
+      const { contract_id, longcode, shortcode } = response.buy;
     
       console.log('Buy response received:', JSON.stringify(response.buy, null, 2));
     
-      if (!contract_id || !shortcode) {
+      if (!contract_id || !longcode || !shortcode) {
         console.error('Buy response is missing required fields:', response.buy);
         return;
       }
     
-      // Match trade context using shortcode and pendingTrades
-      const tradeContext = Array.from(pendingTrades.values()).find((context) =>
-        shortcode.includes(context.symbol)
-      );
+      // Match trade context using the placeholder key or sliced symbol
+      const tradeContext = Array.from(pendingTrades.entries()).find(([placeholderKey, context]) => {
+        const slicedSymbol = context.symbol.replace('frx', ''); // Remove "frx" prefix
+        return shortcode.includes(slicedSymbol); // Check if sliced symbol is in shortcode
+      });
     
       console.log('Matched trade context:', tradeContext);
     
@@ -188,8 +189,8 @@ const createWebSocket = () => {
         return;
       }
     
-      const { symbol, placeholderKey } = tradeContext;
-      const uniqueKey = `${symbol}-${contract_id}`;
+      const [placeholderKey, { symbol: matchedSymbol }] = tradeContext;
+      const uniqueKey = `${matchedSymbol}-${contract_id}`;
     
       // Update trades map
       if (trades.has(placeholderKey)) {
@@ -206,6 +207,7 @@ const createWebSocket = () => {
         console.warn(`Buy response received but placeholder key not found: ${placeholderKey}`);
       }
     }
+    
     
     
     
