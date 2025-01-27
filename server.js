@@ -198,32 +198,24 @@ const createWebSocket = () => {
       }
     }
     
-    
-    
-    
-    
-    
-    
   
     // Handle 'proposal_open_contract' response
     if (response.msg_type === 'proposal_open_contract') {
       const contract = response.proposal_open_contract;
     
       if (!contract || !contract.underlying || !contract.contract_id) {
-        console.error('Proposal open contract is missing required fields');
         return;
       }
 
     
       const uniqueKey = `${contract.underlying}-${contract.contract_id}`; 
+      console.log(`The contract status for the asset ${contract.underlying} is ${contract.status}`);
+      
     
       if (trades.has(uniqueKey) && contract.status !== 'open') {
         handleTradeResult(trades.get(uniqueKey), contract);
       }
     }
-    
-    
-    
     
     
     
