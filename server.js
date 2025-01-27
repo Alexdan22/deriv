@@ -209,10 +209,20 @@ const createWebSocket = () => {
 
     
       const uniqueKey = `${contract.underlying}-${contract.contract_id}`; 
-      console.log(`The contract status for the asset ${contract.underlying} is ${contract.status}`);
+
+      if(contract.status !== 'open'){
+
+        console.log(`The contract status for the asset ${contract.underlying} is ${contract.status}`);
+        console.log(`The unique key generated is ${uniqueKey}`);
+        console.log('Updated pendingTrades:', Array.from(pendingTrades.entries()));
+        
+      
+      }
       
     
       if (trades.has(uniqueKey) && contract.status !== 'open') {
+        console.log('Unique key found and trade ended successfully');
+        
         handleTradeResult(trades.get(uniqueKey), contract);
       }
     }
