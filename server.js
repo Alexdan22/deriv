@@ -4,8 +4,7 @@ const WebSocket = require('ws');
 
 const API_TOKENS = [
   'VX41WSwVGQDET3r', // Replace with your actual API tokens
-  'YOUR_SECOND_API_TOKEN',
-  'YOUR_THIRD_API_TOKEN'
+  '44TRhSy7NFXLsSl'
 ];
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 
@@ -115,9 +114,6 @@ const createWebSocketConnections = () => {
         console.error(`Error from WebSocket: ${response.error.message}`);
       }
 
-      if (response.msg_type === 'buy') {
-        console.log('Trade confirmation received:', response.buy);
-      }
     });
 
     ws.on('close', () => {
