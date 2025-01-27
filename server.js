@@ -111,14 +111,9 @@ const placeTrade = async (ws, trade) => {
 
 // Function to handle trade results
 const handleTradeResult = async (tradeKey, contract) => {
-  console.log(tradeKey, contract);
   
-  const trade = trades.get(tradeKey);
-  if (!trade) {
-    return;
-  }
 
-  console.log(`Trade for ${trade.underlying} ${contract.status}. PnL: ${contract.profit} USD.`);
+  console.log(`Trade for ${contract.underlying} ${contract.status}. PnL: ${contract.profit} USD.`);
       trades.delete(tradeKey); // Stop tracking this trade
       console.log('Updated trades map:', Array.from(trades.keys()));
 };
