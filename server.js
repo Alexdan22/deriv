@@ -1,23 +1,19 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
-const axios = require('axios');
 
-const ACCOUNTS = [
-  { name: 'Alex_demo', apiKey: 'VX41WSwVGQDET3r' },
-  { name: 'Ajith_demo', apiKey: '44TRhSy7NFXLsSl' }
+const API_TOKENS = [
+  'VX41WSwVGQDET3r', // Replace with your actual API tokens
+  'YOUR_SECOND_API_TOKEN',
+  'YOUR_THIRD_API_TOKEN'
 ];
-
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 
 const app = express();
 app.use(bodyParser.json());
 
-const trades = new Map();
-const pendingTrades = new Map();
-
-const accountSockets = new Map();
 const PING_INTERVAL = 30000;
+let wsConnections = [];
 
 // Helper function: Send data to WebSocket
 const sendToWebSocket = (ws, data) => {
@@ -73,8 +69,8 @@ const getMinDuration = (ws, symbol) => {
   });
 };
 
-// Function to place a trade for a specific WebSocket (account)
-const placeTradeForAccount = async (ws, trade) => {
+// Function to place a trade
+const placeTrade = (ws, trade) => {
   const { symbol, call, stake, duration } = trade;
   const contractType = call === 'call' ? 'CALL' : 'PUT';
 
@@ -92,94 +88,49 @@ const placeTradeForAccount = async (ws, trade) => {
         symbol: symbol,
       },
     });
+    console.log(`Trade placed: ${symbol}, ${contractType}, Stake: ${stake}, Duration: ${duration}`);
   } catch (error) {
     console.error(`Error placing trade for ${symbol}:`, error);
   }
 };
 
-// Function to handle trade results
-const handleTradeResult = async (tradeKey, contract) => {
-  const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
-  trades.delete(uniqueKey);
-  console.log(`Trade for ${contract.underlying} ${contract.status}. PnL: ${contract.profit} USD.`);
-};
+// Function to create WebSocket connection for each account
+const createWebSocketConnections = () => {
+  wsConnections = API_TOKENS.map((apiToken) => {
+    const ws = new WebSocket(WEBSOCKET_URL);
 
-// Function to create WebSocket connection for a specific account
-const createWebSocketForAccount = (account) => {
-  const ws = new WebSocket(WEBSOCKET_URL);
+    ws.on('open', () => {
+      console.log(`Connected to Deriv API for token: ${apiToken}`);
+      sendToWebSocket(ws, { authorize: apiToken });
 
-  ws.on('open', () => {
-    console.log(`Connected to Deriv API for ${account.name}.`);
-    sendToWebSocket(ws, { authorize: account.apiKey });
+      setInterval(() => {
+        sendToWebSocket(ws, { ping: 1 });
+      }, PING_INTERVAL);
+    });
 
-    setInterval(() => {
-      sendToWebSocket(ws, { ping: 1 });
-      sendToWebSocket(ws, { proposal_open_contract: 1, subscribe: 1 });
-    }, PING_INTERVAL);
-  });
+    ws.on('message', (data) => {
+      const response = JSON.parse(data);
 
-  ws.on('message', (data) => {
-    const response = JSON.parse(data);
-
-    if (response.msg_type === 'buy') {
-      const { contract_id, longcode, shortcode } = response.buy;
-    
-    
-    
-      // Match trade context using the placeholder key or sliced symbol
-      const tradeContext = Array.from(pendingTrades.entries()).find(([placeholderKey, context]) => {
-        const slicedSymbol = context.symbol.replace('frx', ''); // Remove "frx" prefix
-        return shortcode.includes(slicedSymbol); // Check if sliced symbol is in shortcode
-      });
-    
-    
-     
-    
-      const [placeholderKey, { symbol: matchedSymbol }] = tradeContext;
-      const uniqueKey = `${matchedSymbol}-${contract_id}`;
-    
-      // Update trades map
-      if (trades.has(placeholderKey)) {
-        const trade = trades.get(placeholderKey);
-    
-        trades.set(uniqueKey, trade); // Add the unique key
-        trades.delete(placeholderKey); // Remove the placeholder key
-    
-        console.log(`Trade updated in trades map: ${placeholderKey} -> ${uniqueKey}`);
-        console.log('Updated trades map:', Array.from(trades.keys()));
-    
-        pendingTrades.delete(placeholderKey); // Remove from pendingTrades
-      } else {
-        console.warn(`Buy response received but placeholder key not found: ${placeholderKey}`);
-      }  
-    }
-
-    if (response.msg_type === 'proposal_open_contract') {
-      const contract = response.proposal_open_contract;
-      if (!contract || !contract.underlying || !contract.contract_id) return;
-
-      const uniqueKey = `${contract.underlying}-${contract.contract_id}`;
-      if (trades.has(uniqueKey) && contract.status !== 'open') {
-        handleTradeResult(trades.get(uniqueKey), contract);
+      if (response.error) {
+        console.error(`Error from WebSocket: ${response.error.message}`);
       }
-    }
+
+      if (response.msg_type === 'buy') {
+        console.log('Trade confirmation received:', response.buy);
+      }
+    });
+
+    ws.on('close', () => {
+      console.error('WebSocket connection closed. Reconnecting...');
+      setTimeout(() => createWebSocketConnections(), 5000);
+    });
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
+
+    return ws;
   });
-
-  ws.on('close', () => {
-    console.error(`WebSocket for ${account.name} closed. Reconnecting in 5 seconds...`);
-    setTimeout(() => createWebSocketForAccount(account), 5000);
-  });
-
-  ws.on('error', (error) => {
-    console.error(`WebSocket error for ${account.name}:`, error);
-  });
-
-  accountSockets.set(account.name, ws);
-};
-
-// Initialize WebSocket connections for all accounts
-const initializeWebSockets = () => {
-  ACCOUNTS.forEach((account) => createWebSocketForAccount(account));
 };
 
 // Webhook listener for TradingView alerts
@@ -191,36 +142,32 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send('Invalid webhook payload');
   }
 
-  const normalizedSymbol = 'frx' + symbol;
+  const normalizedSymbol = 'frx' + symbol; // Normalize symbol
   console.log(`Webhook received for symbol: ${normalizedSymbol}, call: ${call}`);
 
   const trade = {
     symbol: normalizedSymbol,
     call,
-    stake: 10,
-    martingaleStep: 0,
-    maxMartingaleSteps: 3,
-    totalPnL: 0,
+    stake: 10, // Fixed stake for each trade
+    duration: null,
   };
 
   try {
-    const minDuration = await getMinDuration(accountSockets.get(ACCOUNTS[0].name), normalizedSymbol);
+    // Fetch the minimum duration for the symbol from the first connection (all connections should have the same data)
+    const minDuration = await getMinDuration(wsConnections[0], normalizedSymbol);
     trade.duration = minDuration;
 
-    ACCOUNTS.forEach((account) => {
-      const ws = accountSockets.get(account.name);
-      if (ws) {
-        placeTradeForAccount(ws, trade);
-      } else {
-        console.error(`No WebSocket for account: ${account.name}`);
-      }
-    });
+    console.log(`Minimum duration for ${normalizedSymbol}: ${minDuration}`);
 
-    res.status(200).send('Trade initiated for all accounts.');
+    // Place the trade on all accounts
+    wsConnections.forEach((ws) => {
+      placeTrade(ws, trade);
+    });
   } catch (error) {
-    console.error('Error processing trade:', error);
-    res.status(500).send('Failed to process trade.');
+    console.error('Error processing alert:', error);
   }
+
+  res.status(200).send('Webhook received and trade initiated.');
 });
 
 // Start the server
@@ -229,5 +176,5 @@ app.listen(PORT, () => {
   console.log(`TradingView webhook listener running on port ${PORT}`);
 });
 
-// Start WebSocket connections for all accounts
-initializeWebSockets();
+// Start WebSocket connections
+createWebSocketConnections();
