@@ -111,38 +111,16 @@ const placeTrade = async (ws, trade) => {
 
 // Function to handle trade results
 const handleTradeResult = async (tradeKey, contract) => {
+  console.log(tradeKey, contract);
+  
   const trade = trades.get(tradeKey);
   if (!trade) {
     return;
   }
 
-  console.log(`Processing trade result for ${tradeKey}:`, trade);
-
-  if (contract.is_expired || contract.is_sold) {
-    const tradePnL = contract.profit;
-    trade.totalPnL += tradePnL;
-
-    if (tradePnL > 0) {
-      console.log(`Trade for ${trade.symbol} won. PnL: ${tradePnL.toFixed(2)} USD.`);
+  console.log(`Trade for ${trade.underlying} ${contract.status}. PnL: ${contract.profit} USD.`);
       trades.delete(tradeKey); // Stop tracking this trade
-    } else {
-      trade.martingaleStep++;
-      if (trade.martingaleStep <= trade.maxMartingaleSteps) {
-        trade.stake *= 2; // Double the stake
-        console.log(
-          `Trade for ${trade.symbol} lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
-        );
-        placeTrade(ws, trade); // Place the next trade in the sequence
-      } else {
-        console.log(
-          `All Martingale steps for ${trade.symbol} lost. Total PnL: ${trade.totalPnL.toFixed(
-            2
-          )} USD. Returning to idle state.`
-        );
-        trades.delete(tradeKey); // Stop tracking this trade
-      }
-    }
-  }
+      console.log('Updated trades map:', Array.from(trades.keys()));
 };
 
 
@@ -210,18 +188,10 @@ const createWebSocket = () => {
     
       const uniqueKey = `${contract.underlying}-${contract.contract_id}`; 
 
-      if(contract.status !== 'open'){
-
-        console.log(`The contract status for the asset ${contract.underlying} is ${contract.status}`);
-        console.log(`The unique key generated is ${uniqueKey}`);
-        console.log('Updated pendingTrades:', Array.from(pendingTrades.entries()));
-        
-      
-      }
       
     
       if (trades.has(uniqueKey) && contract.status !== 'open') {
-        console.log('Unique key found and trade ended successfully');
+        console.log('Unique key found and trade ended successfully, processing results');
         
         handleTradeResult(trades.get(uniqueKey), contract);
       }
