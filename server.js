@@ -3,7 +3,8 @@ const bodyParser = require('body-parser');
 const WebSocket = require('ws');
 
 const API_TOKENS = [
-  'VX41WSwVGQDET3r', // Replace with your actual API tokens
+  'VX41WSwVGQDET3r',
+  'Iah2zoaMjIVRvq9', // Replace with your actual API tokens
   '44TRhSy7NFXLsSl'
 ];
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
