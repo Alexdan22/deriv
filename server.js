@@ -145,7 +145,7 @@ app.post('/webhook', async (req, res) => {
   const trade = {
     symbol: normalizedSymbol,
     call,
-    stake: 10, // Fixed stake for each trade
+    stake: 5, // Fixed stake for each trade
     duration: null,
   };
 
