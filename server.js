@@ -100,9 +100,14 @@ const processTradeSignal = (message, call) => {
   if (message === 'ZONE') zone = call;
   if (message === 'CONDITION') condition = call;
   if (message === 'CONFIRMARION') condition = call;
+  console.log(`Webhook received Updated Zone: ${zone},Condition: ${condition}, Confirmation: ${confirmation}`);
+  
   if (zone === call && condition === call && confirmation === call) {
     wsConnections.forEach((ws) => placeTrade(ws, { symbol: 'frxXAUUSD', call, stake: 10, martingaleStep: 0, maxMartingaleSteps: 1 }));
     condition = confirmation = null;
+    console.log(`Conditions met, entering Trade.`);
+    console.log(`Updated Zone: ${zone},Condition: ${condition}, Confirmation: ${confirmation}`);
+    
   }
 };
 
