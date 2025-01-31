@@ -80,6 +80,8 @@ const createWebSocketConnections = () => {
     ws.on('message', (data) => {
       const response = JSON.parse(data);
       if (response.msg_type === 'buy') {
+        console.log(response);
+        
         const tradeKey = `frxXAUUSD-${response.buy.contract_id}`;
         if (!trades.has(tradeKey)) {
           trades.set(tradeKey, { symbol: 'frxXAUUSD', call: response.buy.call, stake: response.buy.stake, martingaleStep: 0, maxMartingaleSteps: 1 });
