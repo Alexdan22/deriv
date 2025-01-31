@@ -78,16 +78,23 @@ const createWebSocketConnections = () => {
     });
 
     ws.on('message', (data) => {
-      const response = JSON.parse(data);
-      if (response.msg_type === 'buy') {
-        if(response.buy == undefined || response.buy == null){
-          console.log('Invalid buy response');
-        }
-        
-        const tradeKey = `frxXAUUSD-${response.buy.contract_id}`;
-        if (!trades.has(tradeKey)) {
-          trades.set(tradeKey, { symbol: 'frxXAUUSD', call: response.buy.call, stake: response.buy.stake, martingaleStep: 0, maxMartingaleSteps: 1 });
-        }
+        const response = JSON.parse(data);
+        if (response.msg_type === 'buy') {
+          if (!response.buy || !response.buy.contract_id) {  // Check if buy and contract_id exist
+              console.log('Invalid buy response:', response);
+              return; // Exit early if the response is invalid
+          }
+      
+          const tradeKey = `frxXAUUSD-${response.buy.contract_id}`;
+          if (!trades.has(tradeKey)) {
+              trades.set(tradeKey, { 
+                  symbol: 'frxXAUUSD', 
+                  call: response.buy.call, 
+                  stake: response.buy.stake, 
+                  martingaleStep: 0, 
+                  maxMartingaleSteps: 1 
+              });
+          }
       }
       if (response.msg_type === 'proposal_open_contract') {
         handleTradeResult(response.proposal_open_contract);
