@@ -72,6 +72,7 @@ const createWebSocketConnections = () => {
     const ws = new WebSocket(WEBSOCKET_URL);
 
     ws.on('open', () => {
+      console.log(`Connected to Deriv API for token: ${apiToken}`);
       sendToWebSocket(ws, { authorize: apiToken });
       setInterval(() => sendToWebSocket(ws, { ping: 1 }), PING_INTERVAL);
     });
@@ -98,6 +99,7 @@ const createWebSocketConnections = () => {
 const processTradeSignal = (message, call) => {
   if (message === 'ZONE') zone = call;
   if (message === 'CONDITION') condition = call;
+  if (message === 'CONFIRMARION') condition = call;
   if (zone === call && condition === call && confirmation === call) {
     wsConnections.forEach((ws) => placeTrade(ws, { symbol: 'frxXAUUSD', call, stake: 10, martingaleStep: 0, maxMartingaleSteps: 1 }));
     condition = confirmation = null;
