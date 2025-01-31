@@ -80,7 +80,9 @@ const createWebSocketConnections = () => {
     ws.on('message', (data) => {
       const response = JSON.parse(data);
       if (response.msg_type === 'buy') {
-        console.log(`Buy response: ${response.buy}`);
+        if(response.buy == undefined || response.buy == null){
+          console.log('Invalid buy response');
+        }
         
         const tradeKey = `frxXAUUSD-${response.buy.contract_id}`;
         if (!trades.has(tradeKey)) {
