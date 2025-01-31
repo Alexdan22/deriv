@@ -43,11 +43,6 @@ const placeTrade = (ws, trade) => {
         symbol: trade.symbol,
       },
     });
-        
-    trades.set(tradeKey, trade);
-
-    trades.set(tradeKey, trade); // Add the unique key
-    console.log('Updated trades map:', Array.from(trades.keys()));
 
   } catch (error) {
     console.error(`Error placing trade for ${trade.symbol}:`, error);
@@ -96,6 +91,7 @@ const createWebSocketConnections = () => {
           }
       
           const tradeKey = `frxXAUUSD-${response.buy.contract_id}`;
+
           if (!trades.has(tradeKey)) {
               trades.set(tradeKey, { 
                   symbol: 'frxXAUUSD', 
@@ -105,6 +101,8 @@ const createWebSocketConnections = () => {
                   maxMartingaleSteps: 1 
               });
           }
+          
+          console.log('Updated trades map:', Array.from(trades.keys()));
       }
       if (response.msg_type === 'proposal_open_contract') {
         console.log('Trade closed, processing the results');
