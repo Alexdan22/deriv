@@ -99,7 +99,7 @@ const createWebSocketConnections = () => {
 const processTradeSignal = (message, call) => {
   if (message === 'ZONE') zone = call;
   if (message === 'CONDITION') condition = call;
-  if (message === 'CONFIRMARION') condition = call;
+  if (message === 'CONFIRMARION') confirmation = call;
   console.log(`Webhook received Updated Zone: ${zone},Condition: ${condition}, Confirmation: ${confirmation}`);
   
   if (zone === call && condition === call && confirmation === call) {
