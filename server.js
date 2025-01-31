@@ -43,6 +43,12 @@ const placeTrade = (ws, trade) => {
         symbol: trade.symbol,
       },
     });
+        
+    trades.set(tradeKey, trade);
+
+    trades.set(tradeKey, trade); // Add the unique key
+    console.log('Updated trades map:', Array.from(trades.keys()));
+
   } catch (error) {
     console.error(`Error placing trade for ${trade.symbol}:`, error);
   }
@@ -59,8 +65,12 @@ const handleTradeResult = async (contract) => {
         trade.stake *= 2;
         trade.martingaleStep++;
         placeTrade(wsConnections[0], trade);
+        console.log(`Trade lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
+        );
       } else {
-        trades.delete(tradeKey);
+        console.log(`All Martingale steps for ${trade.symbol} lost. Total PnL: ${trade.totalPnL}USD. Returning to idle state.`
+      );
+      trades.delete(tradeKey); // Stop tracking this trade
       }
     }
   }
@@ -97,6 +107,8 @@ const createWebSocketConnections = () => {
           }
       }
       if (response.msg_type === 'proposal_open_contract') {
+        console.log('Trade closed, processing the results');
+        
         handleTradeResult(response.proposal_open_contract);
       }
     });
