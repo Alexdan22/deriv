@@ -66,6 +66,8 @@ const placeTrade = async (ws, accountId, trade) => {
 // Handle trade outcomes with account isolation
 const handleTradeResult = async (contract, accountId) => {
   if (!contract || !accountId) return;
+  console.log('Account id is ' + accountId);
+  
 
   const tradesForAccount = accountTrades.get(accountId);
   if (!tradesForAccount) return;
@@ -77,6 +79,8 @@ const handleTradeResult = async (contract, accountId) => {
   if (!trade) return;
 
   if (contract.is_expired || contract.is_sold) {
+    console.log('I was logged till contract expiry');
+    
     if (contract.profit < 0 && trade.martingaleStep < trade.maxMartingaleSteps) {
       const newStake = trade.stake * 2;
       const ws = wsConnections.find(conn => conn.accountId === accountId);
@@ -133,7 +137,10 @@ const createWebSocketConnections = () => {
           }
     
           const passthrough = contract.echo_req?.passthrough;
-          if (passthrough?.custom_trade_id) {
+          if (contract.status !== 'open') {
+            console.log('Trade ended successfully processing results');
+            
+            console.log(contract);
             const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
             handleTradeResult(contract, accountId);
           }
