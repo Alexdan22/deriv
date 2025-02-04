@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
+const { v4: uuidv4 } = require('uuid');  // Import UUID package
 
 require('dotenv').config(); // Load environment variables from .env file
 
@@ -28,7 +29,6 @@ const parseDuration = (duration) => {
   return unit === 't' ? value : unit === 's' ? value / 60 : unit === 'm' ? value : unit === 'h' ? value * 60 : unit === 'd' ? value * 1440 : Infinity;
 };
 
-const { v4: uuidv4 } = require('uuid');  // Import UUID package
 
 // const placeTrade = async (ws, trade, accountId) => {
 //     // if (await hasReachedProfitLimit(accountId)) {
