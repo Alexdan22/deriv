@@ -28,27 +28,23 @@ const sendToWebSocket = (ws, data) => {
 
 // Trade placement with account isolation
 const placeTrade = async (ws, accountId, trade) => {
-  if (!accountId || !trade) return;
-
   const tradeId = uuidv4();
   
-  // Initialize account trade tracking
   if (!accountTrades.has(accountId)) {
     accountTrades.set(accountId, new Map());
   }
-  
+
   const tradesForAccount = accountTrades.get(accountId);
   tradesForAccount.set(tradeId, {
-    symbol: trade.symbol,
+    symbol: "frxXAUUSD",
     call: trade.call,
     stake: trade.stake,
     martingaleStep: 0,
     maxMartingaleSteps: 2,
-    lastContractId: null
   });
 
   sendToWebSocket(ws, {
-    buy: "1", // Must be a string
+    buy: "1",
     parameters: {
       amount: trade.stake,
       basis: "stake",
@@ -58,7 +54,9 @@ const placeTrade = async (ws, accountId, trade) => {
       duration_unit: "m",
       symbol: "frxXAUUSD",
     },
-    custom_trade_id: `${accountId}_${tradeId}`,
+    passthrough: { 
+      custom_trade_id: `${accountId}_${tradeId}` 
+    }
   });
 
   console.log(`[${accountId}] Trade placed: ${tradeId}`);
@@ -111,26 +109,25 @@ const createWebSocketConnections = () => {
       }, PING_INTERVAL);
     });
 
-    ws.on('message', data => {
+    ws.on("message", (data) => {
       const response = JSON.parse(data);
-      console.log("[RAW RESPONSE]", JSON.stringify(response, null, 2));
-      
+    
       // Handle buy responses
-      if (response.msg_type === 'buy' && response.echo_req?.custom_trade_id) {
-        const [accountId, tradeId] = response.echo_req.custom_trade_id.split('_');
-        if (accountId && tradeId) {
+      if (response.msg_type === "buy") {
+        const passthrough = response.echo_req?.passthrough;
+        if (passthrough?.custom_trade_id) {
+          const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
           console.log(`[${accountId}] Trade confirmed: ${tradeId}`);
         }
       }
-
+    
       // Handle contract updates
-      if (response.msg_type === 'proposal_open_contract') {
+      if (response.msg_type === "proposal_open_contract") {
         const contract = response.proposal_open_contract;
-        if (contract?.echo_req?.custom_trade_id) {
-          const [accountId] = contract.echo_req.custom_trade_id.split('_');
-          if (accountId && contract.status !== 'open') {
-            handleTradeResult(contract, accountId);
-          }
+        const passthrough = contract.echo_req?.passthrough;
+        if (passthrough?.custom_trade_id) {
+          const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
+          handleTradeResult(contract, accountId);
         }
       }
     });
