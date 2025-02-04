@@ -56,19 +56,18 @@ const handleTradeResult = async (contract) => {
 
   if (trade) {
     console.log(`Tradekey matched, Processing trade for ${tradeKey}`);
-    console.log(contract);
     
     
     if (contract.is_expired || contract.is_sold) {
       const tradePnL = contract.profit;
-      if (tradePnL <= 0 && trade.martingaleStep < trade.maxMartingaleSteps) {
+      if (tradePnL < 0 && trade.martingaleStep < trade.maxMartingaleSteps) {
         trade.stake *= 2;
         trade.martingaleStep++;
         placeTrade(wsConnections[0], trade);
         console.log(`Trade lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
         );
       } else {
-        console.log(`All Martingale steps for ${trade.symbol} lost. Total PnL: ${trade.totalPnL}USD. Returning to idle state.`
+        console.log(`All Martingale steps for ${trade.symbol} lost. Total PnL: ${trade.tradePnL}USD. Returning to idle state.`
       );
       trades.delete(tradeKey); // Stop tracking this trade
       }
@@ -99,12 +98,14 @@ const createWebSocketConnections = () => {
           }
       
           const tradeKey = `frxXAUUSD-${response.buy.contract_id}`;
+          console.log(response.buy);
+          
 
           if (!trades.has(tradeKey)) {
               trades.set(tradeKey, { 
                   symbol: 'frxXAUUSD', 
-                  call: response.buy.call, 
-                  stake: response.buy.stake, 
+                  call: response.buy.contract_type, 
+                  stake: response.buy.buy_price, 
                   martingaleStep: 0, 
                   maxMartingaleSteps: 1 
               });
