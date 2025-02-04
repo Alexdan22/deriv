@@ -39,8 +39,10 @@ const placeTrade = async (ws, accountId, trade) => {
     symbol: "frxXAUUSD",
     call: trade.call,
     stake: trade.stake,
-    martingaleStep: 0,
+    martingaleStep: trade.martingaleStep || 0, // Default to 0 if not provided
     maxMartingaleSteps: 2,
+    contract_id: null, // Populated later
+    parentTradeId: trade.parentTradeId || null // Track parent for chaining
   });
 
   sendToWebSocket(ws, {
@@ -64,35 +66,35 @@ const placeTrade = async (ws, accountId, trade) => {
 };
 
 // Handle trade outcomes with account isolation
-const handleTradeResult = async (contract, accountId) => {
-  if (!contract || !accountId) return;
-  console.log('Account id is ' + accountId);
-  
-
+const handleTradeResult = async (contract, accountId, tradeId) => {
   const tradesForAccount = accountTrades.get(accountId);
   if (!tradesForAccount) return;
-
-  const tradeId = contract.echo_req?.custom_trade_id?.split('_')[1];
-  if (!tradeId) return;
 
   const trade = tradesForAccount.get(tradeId);
   if (!trade) return;
 
-  if (contract.is_expired || contract.is_sold) {
-    console.log('I was logged till contract expiry');
-    
-    if (contract.profit < 0 && trade.martingaleStep < trade.maxMartingaleSteps) {
+  if (contract.profit < 0) {
+    if (trade.martingaleStep < trade.maxMartingaleSteps) {
       const newStake = trade.stake * 2;
       const ws = wsConnections.find(conn => conn.accountId === accountId);
-      await placeTrade(ws, accountId, { 
-        ...trade, 
+
+      // Place new Martingale trade with incremented step
+      await placeTrade(ws, accountId, {
+        symbol: trade.symbol,
+        call: trade.call,
         stake: newStake,
-        martingaleStep: trade.martingaleStep + 1 
+        martingaleStep: trade.martingaleStep + 1,
+        parentTradeId: tradeId // Link to parent trade
       });
-      console.log(`[${accountId}] Martingale step ${trade.martingaleStep + 1}`);
+
+      console.log(`[${accountId}] Martingale step ${trade.martingaleStep + 1} for trade chain ${trade.parentTradeId || tradeId}`);
+    } else {
+      console.log(`[${accountId}] Max Martingale steps reached for trade chain ${trade.parentTradeId || tradeId}`);
     }
-    tradesForAccount.delete(tradeId);
   }
+
+  // Cleanup: Remove the trade from tracking once processed
+  tradesForAccount.delete(tradeId);
 };
 
 // WebSocket connection management
@@ -119,30 +121,34 @@ const createWebSocketConnections = () => {
         const response = JSON.parse(data);
     
         // Handle "buy" responses
-        if (response.msg_type === "buy") {
-          const passthrough = response.echo_req?.passthrough;
+        if (response.msg_type === "buy" && response.contract_id) {
+          const passthrough = response.passthrough || response.echo_req?.passthrough;
           if (passthrough?.custom_trade_id) {
             const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
-            console.log(`[${accountId}] Buy confirmed: ${tradeId}`);
-          } else if (response.error) {
-            console.error("Buy failed:", response.error.message);
+            const tradesForAccount = accountTrades.get(accountId);
+            if (tradesForAccount && tradesForAccount.has(tradeId)) {
+              const trade = tradesForAccount.get(tradeId);
+              trade.contract_id = response.contract_id; // Store contract_id
+              tradesForAccount.set(tradeId, trade);
+            }
           }
         }
     
         // Handle contract updates
         if (response.msg_type === "proposal_open_contract") {
           const contract = response.proposal_open_contract;
-          if (!contract) {
-            return;
-          }
-    
-          const passthrough = contract.echo_req?.passthrough;
-          if (contract.status !== 'open') {
-            console.log('Trade ended successfully processing results');
-            
-            console.log(contract);
-            const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
-            handleTradeResult(contract, accountId);
+          if (!contract || !contract.contract_id) return;
+        
+          // Find the trade by contract_id
+          for (const [accId, trades] of accountTrades) {
+            for (const [tradeId, trade] of trades) {
+              if (trade.contract_id === contract.contract_id) {
+                if(contract.status !== 'open'){
+                  handleTradeResult(contract, accId, tradeId);
+                  return;
+                }
+              }
+            }
           }
         }
     
