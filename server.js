@@ -10,7 +10,7 @@ const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 const app = express();
 app.use(bodyParser.json());
 
-const trades = new Map();
+const accountTrades = new Map();
 let zone = null, condition = null, confirmation = null;
 
 const PING_INTERVAL = 30000;
@@ -28,9 +28,65 @@ const parseDuration = (duration) => {
   return unit === 't' ? value : unit === 's' ? value / 60 : unit === 'm' ? value : unit === 'h' ? value * 60 : unit === 'd' ? value * 1440 : Infinity;
 };
 
-const placeTrade = (ws, trade) => {
-  try {
-    sendToWebSocket(ws, {
+const { v4: uuidv4 } = require('uuid');  // Import UUID package
+
+// const placeTrade = async (ws, trade, accountId) => {
+//     // if (await hasReachedProfitLimit(accountId)) {
+//     //     console.log(`Account ${accountId} has reached daily profit limit. Ignoring trade.`);
+//     //     return;
+//     // }
+
+//     const tradeId = uuidv4();  // Generate a unique trade ID
+//     trade.uniqueId = tradeId;  // Attach trade ID
+
+//     // Store trade details in the map
+//     trades.set(tradeId, {
+//         accountId,  // Store accountId for tracking
+//         symbol: trade.symbol,
+//         call: trade.call,
+//         stake: trade.stake,
+//         martingaleStep: 0,
+//         maxMartingaleSteps: 2,  // Example max steps
+//         lastContractId: null
+//     });
+
+//     sendToWebSocket(ws, {
+//         buy: 1,
+//         price: trade.stake,
+//         parameters: {
+//             amount: trade.stake,
+//             basis: 'stake',
+//             contract_type: trade.call === 'call' ? 'CALL' : 'PUT',
+//             currency: 'USD',
+//             duration: 5,
+//             duration_unit: 'm',
+//             symbol: trade.symbol,
+//         },
+//         custom_trade_id: tradeId  // Send trade ID to track it later
+//     });
+
+//     console.log(`Trade placed: ${tradeId} for account ${accountId}`);
+// };
+
+const placeTrade = async (ws, accountId, trade) => { // Add accountId parameter
+  const tradeId = uuidv4();
+  
+  // Initialize account-specific trades if needed
+  if (!accountTrades.has(accountId)) {
+      accountTrades.set(accountId, new Map());
+  }
+  
+  const tradesForAccount = accountTrades.get(accountId);
+  tradesForAccount.set(tradeId, {
+      symbol: trade.symbol,
+      call: trade.call,
+      stake: trade.stake,
+      martingaleStep: 0,
+      maxMartingaleSteps: 2,
+      lastContractId: null
+  });
+
+  sendToWebSocket(ws, {
       buy: 1,
       price: trade.stake,
       parameters: {
@@ -42,42 +98,27 @@ const placeTrade = (ws, trade) => {
         duration_unit: 'm',
         symbol: trade.symbol,
       },
-    });
+      custom_trade_id: `${accountId}_${tradeId}` // Embed accountId in trade ID
+  });
+};
 
-  } catch (error) {
-    console.error(`Error placing trade for ${trade.symbol}:`, error);
+
+
+const handleTradeResult = async (contract, accountId) => {
+  const tradeId = contract.echo_req.custom_trade_id.split('_')[1]; // Extract tradeId
+  const tradesForAccount = accountTrades.get(accountId);
+  const trade = tradesForAccount.get(tradeId);
+
+  if (contract.profit < 0 && trade.martingaleStep < trade.maxMartingaleSteps) {
+      // Execute Martingale ONLY for this account
+      const newStake = trade.stake * 2;
+      const ws = wsConnections.find(conn => conn.accountId === accountId);
+      placeTrade(ws, accountId, { ...trade, stake: newStake });
+  } else {
+      tradesForAccount.delete(tradeId); // Cleanup
   }
 };
 
-const handleTradeResult = async (contract) => {
-  const tradeKey = `frxXAUUSD-${contract.contract_id}`;
-  const trade = trades.get(tradeKey);
-  
-
-  if (trade) {
-    console.log(`Tradekey matched, Processing trade for ${tradeKey}`);
-    
-    
-    if (contract.is_expired || contract.is_sold) {
-      const tradePnL = contract.profit;
-      console.log(`tradePnL is ${tradePnL}, Contract profit is ${contract.profit},`);
-      console.log(trade);
-      
-      
-      if (tradePnL < 0 && trade.martingaleStep < trade.maxMartingaleSteps) {
-        trade.stake *= 2;
-        trade.martingaleStep++;
-        placeTrade(wsConnections[0], trade);
-        console.log(`Trade lost. Entering Martingale step ${trade.martingaleStep} with stake ${trade.stake} USD.`
-        );
-      } else {
-        console.log(`All Martingale steps for ${trade.symbol} lost. Total PnL: ${trade.tradePnL}USD. Returning to idle state.`
-      );
-      trades.delete(tradeKey); // Stop tracking this trade
-      }
-    }
-  }
-};
 
 const createWebSocketConnections = () => {
   wsConnections.forEach(ws => {
@@ -88,6 +129,7 @@ const createWebSocketConnections = () => {
   
   wsConnections = API_TOKENS.map((apiToken) => {
     const ws = new WebSocket(WEBSOCKET_URL);
+    ws.accountId = apiToken; // Attach accountId to WebSocket object
 
     ws.on('open', () => {
       console.log(`Connected to Deriv API for token: ${apiToken}`);
@@ -101,29 +143,26 @@ const createWebSocketConnections = () => {
     ws.on('message', (data) => {
         const response = JSON.parse(data);
         if (response.msg_type === 'buy') {
-          if (!response.buy || !response.buy.contract_id) {  
-              console.log('Invalid buy response:', response);
-              return; // Exit early if the response is invalid
+          if (!response.buy || !response.buy.contract_id) {
+              // console.log('Invalid buy response:', response);
+              return;
           }
       
-          const tradeKey = `frxXAUUSD-${response.buy.contract_id}`;
-          console.log(response.buy);
+          const contractId = response.buy.contract_id;
+          const tradeId = response.echo_req?.custom_trade_id;  // Get trade ID
       
-          // Extract contract type (CALL/PUT) from the shortcode
-          const contractType = response.buy.shortcode.includes("CALL") ? "CALL" : "PUT";
-      
-          if (!trades.has(tradeKey)) {
-              trades.set(tradeKey, { 
-                  symbol: 'frxXAUUSD', 
-                  call: contractType,  // Use extracted contract type
-                  stake: response.buy.buy_price, // Use buy_price for stake
-                  martingaleStep: 0, 
-                  maxMartingaleSteps: 1 
-              });
+          if (!tradeId || !trades.has(tradeId)) {
+              console.log(`Trade ID not found for contract ${contractId}`);
+              return;
           }
       
-          console.log('Updated trades map:', Array.from(trades.keys()));
+          const trade = trades.get(tradeId);
+          trade.lastContractId = contractId;  // Store contract ID
+          trades.set(tradeId, trade);
+      
+          console.log(`Trade tracked: ${tradeId} (Account: ${trade.accountId}) -> Contract ${contractId}`);
       }
+      
       
       if (response.msg_type === 'proposal_open_contract') {
         const contract = response.proposal_open_contract;
@@ -148,18 +187,28 @@ const createWebSocketConnections = () => {
 };
 
 const processTradeSignal = (message, call) => {
-  if (message === 'ZONE') zone = call;
-  if (message === 'CONDITION') condition = call;
-  if (message === 'CONFIRMATION') confirmation = call;
-  console.log(`Webhook received Updated Zone: ${zone},Condition: ${condition}, Confirmation: ${confirmation}`);
-  
-  if (zone === call && condition === call && confirmation === call) {
-    wsConnections.forEach((ws) => placeTrade(ws, { symbol: 'frxXAUUSD', call, stake: 10, martingaleStep: 0, maxMartingaleSteps: 1 }));
-    condition = confirmation = null;
-    console.log(`Conditions met, entering Trade.`);
-    console.log(`Updated Zone: ${zone},Condition: ${condition}, Confirmation: ${confirmation}`);
-    
-  }
+  // Track conditions per account (example logic)
+  API_TOKENS.forEach((accountId) => {
+      if (!zone.has(accountId)) zone.set(accountId, null);
+      if (!condition.has(accountId)) condition.set(accountId, null);
+      if (!confirmation.has(accountId)) confirmation.set(accountId, null);
+
+      if (message === 'ZONE') zone.set(accountId, call);
+      if (message === 'CONDITION') condition.set(accountId, call);
+      if (message === 'CONFIRMATION') confirmation.set(accountId, call);
+
+      if (
+          zone.get(accountId) === call &&
+          condition.get(accountId) === call &&
+          confirmation.get(accountId) === call
+      ) {
+          const ws = wsConnections.find(conn => conn.accountId === accountId);
+          placeTrade(ws, accountId, { symbol: 'frxXAUUSD', call, stake: 10 });
+          // Reset conditions for this account
+          condition.set(accountId, null);
+          confirmation.set(accountId, null);
+      }
+  });
 };
 
 app.post('/webhook', (req, res) => {
