@@ -56,7 +56,7 @@ const handleTradeResult = async (contract) => {
   
 
   if (trade) {
-    console.log(`Trade key matched, Processing trade for ${contract}`);
+    console.log(`Tradekey matched, Processing trade for ${contract}`);
     
     if (contract.is_expired || contract.is_sold) {
       const tradePnL = contract.profit;
