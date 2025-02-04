@@ -12,7 +12,10 @@ const app = express();
 app.use(bodyParser.json());
 
 const accountTrades = new Map();
-let zone = null, condition = null, confirmation = null;
+const zone = new Map();      // Track per-account zone
+const condition = new Map(); // Track per-account condition
+const confirmation = new Map(); // Track per-account confirmation
+
 
 const PING_INTERVAL = 30000;
 let wsConnections = [];
@@ -105,17 +108,34 @@ const placeTrade = async (ws, accountId, trade) => { // Add accountId parameter
 
 
 const handleTradeResult = async (contract, accountId) => {
-  const tradeId = contract.echo_req.custom_trade_id.split('_')[1]; // Extract tradeId
-  const tradesForAccount = accountTrades.get(accountId);
-  const trade = tradesForAccount.get(tradeId);
+  // Guard clause: Validate required properties
+  if (!contract || !accountId || !contract.profit) return;
 
-  if (contract.profit < 0 && trade.martingaleStep < trade.maxMartingaleSteps) {
-      // Execute Martingale ONLY for this account
-      const newStake = trade.stake * 2;
-      const ws = wsConnections.find(conn => conn.accountId === accountId);
-      placeTrade(ws, accountId, { ...trade, stake: newStake });
-  } else {
-      tradesForAccount.delete(tradeId); // Cleanup
+  // Get trades for this account
+  const tradesForAccount = accountTrades.get(accountId);
+  if (!tradesForAccount) return;
+
+  // Extract trade ID from echo_req
+  const tradeId = contract.echo_req?.custom_trade_id?.split('_')[1];
+  if (!tradeId) return;
+
+  const trade = tradesForAccount.get(tradeId);
+  if (!trade) return;
+
+  if (contract.is_expired || contract.is_sold) {
+    if (contract.profit < 0) {
+      if (trade.martingaleStep < trade.maxMartingaleSteps) {
+        const newStake = trade.stake * 2;
+        const ws = wsConnections.find(conn => conn.accountId === accountId);
+        await placeTrade(ws, accountId, { ...trade, stake: newStake });
+        trade.martingaleStep++;
+        tradesForAccount.set(tradeId, trade);
+      } else {
+        tradesForAccount.delete(tradeId);
+      }
+    } else {
+      tradesForAccount.delete(tradeId);
+    }
   }
 };
 
@@ -143,13 +163,14 @@ const createWebSocketConnections = () => {
     ws.on('message', (data) => {
         const response = JSON.parse(data);
         if (response.msg_type === 'buy') {
+          if (!response.echo_req?.custom_trade_id) return;
+          const [accountId, tradeId] = response.echo_req.custom_trade_id.split('_');
           if (!response.buy || !response.buy.contract_id) {
               // console.log('Invalid buy response:', response);
               return;
           }
       
           const contractId = response.buy.contract_id;
-          const tradeId = response.echo_req?.custom_trade_id;  // Get trade ID
       
           if (!tradeId || !trades.has(tradeId)) {
               console.log(`Trade ID not found for contract ${contractId}`);
@@ -164,16 +185,22 @@ const createWebSocketConnections = () => {
       }
       
       
-      if (response.msg_type === 'proposal_open_contract') {
-        const contract = response.proposal_open_contract;
-        if (!contract || !contract.underlying || !contract.contract_id) {
-          return;
+              // In the WebSocket message handler:
+        if (response.msg_type === 'proposal_open_contract') {
+          const contract = response.proposal_open_contract;
+          
+          // Add null checks:
+          if (!contract || !contract.echo_req?.custom_trade_id) return;
+
+          const tradeIdParts = contract.echo_req.custom_trade_id.split('_');
+          if (tradeIdParts.length !== 2) return; // Validate format
+
+          if ( contract.status !== 'open') {
+            const [accountId, tradeId] = tradeIdParts;
+            handleTradeResult(contract, accountId); // Pass accountId explicitly
+          }
+
         }
-        
-        if ( contract.status !== 'open') {
-          handleTradeResult(contract);
-        }
-      }
     });
     
     ws.on('close', () => {
@@ -187,27 +214,43 @@ const createWebSocketConnections = () => {
 };
 
 const processTradeSignal = (message, call) => {
-  // Track conditions per account (example logic)
   API_TOKENS.forEach((accountId) => {
-      if (!zone.has(accountId)) zone.set(accountId, null);
-      if (!condition.has(accountId)) condition.set(accountId, null);
-      if (!confirmation.has(accountId)) confirmation.set(accountId, null);
+    // Initialize account-specific state if missing
+    if (!zone.has(accountId)) zone.set(accountId, null);
+    if (!condition.has(accountId)) condition.set(accountId, null);
+    if (!confirmation.has(accountId)) confirmation.set(accountId, null);
 
-      if (message === 'ZONE') zone.set(accountId, call);
-      if (message === 'CONDITION') condition.set(accountId, call);
-      if (message === 'CONFIRMATION') confirmation.set(accountId, call);
+    // Update state based on message
+    switch (message) {
+      case 'ZONE':
+        zone.set(accountId, call);
+        break;
+      case 'CONDITION':
+        condition.set(accountId, call);
+        break;
+      case 'CONFIRMATION':
+        confirmation.set(accountId, call);
+        break;
+    }
 
-      if (
-          zone.get(accountId) === call &&
-          condition.get(accountId) === call &&
-          confirmation.get(accountId) === call
-      ) {
-          const ws = wsConnections.find(conn => conn.accountId === accountId);
-          placeTrade(ws, accountId, { symbol: 'frxXAUUSD', call, stake: 10 });
-          // Reset conditions for this account
-          condition.set(accountId, null);
-          confirmation.set(accountId, null);
+    // Check if all conditions are met for this account
+    if (
+      zone.get(accountId) === call &&
+      condition.get(accountId) === call &&
+      confirmation.get(accountId) === call
+    ) {
+      const ws = wsConnections.find(conn => conn.accountId === accountId);
+      if (ws) {
+        placeTrade(ws, accountId, { 
+          symbol: 'frxXAUUSD', 
+          call, 
+          stake: 10 
+        });
+        // Reset conditions for this account
+        condition.set(accountId, null);
+        confirmation.set(accountId, null);
       }
+    }
   });
 };
 
