@@ -48,18 +48,17 @@ const placeTrade = async (ws, accountId, trade) => {
   });
 
   sendToWebSocket(ws, {
-    buy: 1,
-    price: trade.stake,
+    buy: "1", // Must be a string
     parameters: {
       amount: trade.stake,
-      basis: 'stake',
-      contract_type: trade.call === 'call' ? 'CALL' : 'PUT',
-      currency: 'USD',
+      basis: "stake",
+      contract_type: trade.call === "call" ? "CALL" : "PUT",
+      currency: "USD",
       duration: 5,
-      duration_unit: 'm',
-      symbol: trade.symbol,
+      duration_unit: "m",
+      symbol: "frxXAUUSD",
     },
-    custom_trade_id: `${accountId}_${tradeId}` // Account-trade composite ID
+    custom_trade_id: `${accountId}_${tradeId}`,
   });
 
   console.log(`[${accountId}] Trade placed: ${tradeId}`);
@@ -114,6 +113,7 @@ const createWebSocketConnections = () => {
 
     ws.on('message', data => {
       const response = JSON.parse(data);
+      console.log("[RAW RESPONSE]", JSON.stringify(response, null, 2));
       
       // Handle buy responses
       if (response.msg_type === 'buy' && response.echo_req?.custom_trade_id) {
