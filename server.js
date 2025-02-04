@@ -110,25 +110,38 @@ const createWebSocketConnections = () => {
     });
 
     ws.on("message", (data) => {
-      const response = JSON.parse(data);
+      try {
+        const response = JSON.parse(data);
+        console.log("[DEBUG] Received:", response); // 👈 For troubleshooting
     
-      // Handle buy responses
-      if (response.msg_type === "buy") {
-        const passthrough = response.echo_req?.passthrough;
-        if (passthrough?.custom_trade_id) {
-          const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
-          console.log(`[${accountId}] Trade confirmed: ${tradeId}`);
+        // Handle "buy" responses
+        if (response.msg_type === "buy") {
+          const passthrough = response.echo_req?.passthrough;
+          if (passthrough?.custom_trade_id) {
+            const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
+            console.log(`[${accountId}] Buy confirmed: ${tradeId}`);
+          } else if (response.error) {
+            console.error("Buy failed:", response.error.message);
+          }
         }
-      }
     
-      // Handle contract updates
-      if (response.msg_type === "proposal_open_contract") {
-        const contract = response.proposal_open_contract;
-        const passthrough = contract.echo_req?.passthrough;
-        if (passthrough?.custom_trade_id) {
-          const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
-          handleTradeResult(contract, accountId);
+        // Handle contract updates
+        if (response.msg_type === "proposal_open_contract") {
+          const contract = response.proposal_open_contract;
+          if (!contract) {
+            console.log("[WARN] Empty contract update");
+            return;
+          }
+    
+          const passthrough = contract.echo_req?.passthrough;
+          if (passthrough?.custom_trade_id) {
+            const [accountId, tradeId] = passthrough.custom_trade_id.split("_");
+            handleTradeResult(contract, accountId);
+          }
         }
+    
+      } catch (error) {
+        console.error("Message processing failed:", error);
       }
     });
 
