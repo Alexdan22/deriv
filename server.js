@@ -76,7 +76,12 @@ const handleTradeResult = async (contract) => {
 };
 
 const createWebSocketConnections = () => {
-  wsConnections.forEach(ws => ws.close()); // Close existing connections
+  wsConnections.forEach(ws => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.close();
+    }
+  });
+  
   wsConnections = API_TOKENS.map((apiToken) => {
     const ws = new WebSocket(WEBSOCKET_URL);
 
@@ -92,27 +97,30 @@ const createWebSocketConnections = () => {
     ws.on('message', (data) => {
         const response = JSON.parse(data);
         if (response.msg_type === 'buy') {
-          if (!response.buy || !response.buy.contract_id) {  // Check if buy and contract_id exist
+          if (!response.buy || !response.buy.contract_id) {  
               console.log('Invalid buy response:', response);
               return; // Exit early if the response is invalid
           }
       
           const tradeKey = `frxXAUUSD-${response.buy.contract_id}`;
           console.log(response.buy);
-          
-
+      
+          // Extract contract type (CALL/PUT) from the shortcode
+          const contractType = response.buy.shortcode.includes("CALL") ? "CALL" : "PUT";
+      
           if (!trades.has(tradeKey)) {
               trades.set(tradeKey, { 
                   symbol: 'frxXAUUSD', 
-                  call: response.buy.contract_type, 
-                  stake: response.buy.buy_price, 
+                  call: contractType,  // Use extracted contract type
+                  stake: response.buy.buy_price, // Use buy_price for stake
                   martingaleStep: 0, 
                   maxMartingaleSteps: 1 
               });
           }
-          
+      
           console.log('Updated trades map:', Array.from(trades.keys()));
       }
+      
       if (response.msg_type === 'proposal_open_contract') {
         const contract = response.proposal_open_contract;
         if (!contract || !contract.underlying || !contract.contract_id) {
@@ -124,8 +132,12 @@ const createWebSocketConnections = () => {
         }
       }
     });
-
-    ws.on('close', () => setTimeout(createWebSocketConnections, 5000));
+    
+    ws.on('close', () => {
+      console.log('WebSocket closed, retrying in 10 seconds...');
+      setTimeout(createWebSocketConnections, 10000);
+    });
+    
     ws.on('error', (error) => console.error('WebSocket error:', error));
     return ws;
   });
