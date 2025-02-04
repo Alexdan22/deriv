@@ -112,9 +112,15 @@ const createWebSocketConnections = () => {
           console.log('Updated trades map:', Array.from(trades.keys()));
       }
       if (response.msg_type === 'proposal_open_contract') {
-        console.log('Trade closed, processing the results');
+        const contract = response.proposal_open_contract;
+        if (!contract || !contract.underlying || !contract.contract_id) {
+          return;
+        }
         
-        handleTradeResult(response.proposal_open_contract);
+        if ( contract.status !== 'open') {
+          console.log('Trade closed, processing the results');
+          handleTradeResult(contract);
+        }
       }
     });
 
