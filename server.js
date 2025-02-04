@@ -83,7 +83,7 @@ const createWebSocketConnections = () => {
     ws.on('open', () => {
       console.log(`Connected to Deriv API for token: ${apiToken}`);
       sendToWebSocket(ws, { authorize: apiToken });
-      setInterval(() => sendToWebSocket(ws, { ping: 1 }), PING_INTERVAL);
+      setInterval(() => sendToWebSocket(ws, { ping: 1 }), sendToWebSocket(ws, { proposal_open_contract: 1, subscribe: 1 }),PING_INTERVAL);
     });
 
     ws.on('message', (data) => {
