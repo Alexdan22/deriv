@@ -113,7 +113,6 @@ const createWebSocketConnections = () => {
     ws.on("message", (data) => {
       try {
         const response = JSON.parse(data);
-        console.log("[DEBUG] Received:", response); // 👈 For troubleshooting
     
         // Handle "buy" responses
         if (response.msg_type === "buy") {
@@ -130,7 +129,6 @@ const createWebSocketConnections = () => {
         if (response.msg_type === "proposal_open_contract") {
           const contract = response.proposal_open_contract;
           if (!contract) {
-            console.log("[WARN] Empty contract update");
             return;
           }
     
