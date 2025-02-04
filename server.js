@@ -52,11 +52,12 @@ const placeTrade = (ws, trade) => {
 const handleTradeResult = async (contract) => {
   const tradeKey = `frxXAUUSD-${contract.contract_id}`;
   const trade = trades.get(tradeKey);
-  console.log(tradeKey, trade, Array.from(trades.keys()));
   
 
   if (trade) {
-    console.log(`Tradekey matched, Processing trade for ${contract}`);
+    console.log(`Tradekey matched, Processing trade for ${tradeKey}`);
+    console.log(contract);
+    
     
     if (contract.is_expired || contract.is_sold) {
       const tradePnL = contract.profit;
@@ -118,7 +119,6 @@ const createWebSocketConnections = () => {
         }
         
         if ( contract.status !== 'open') {
-          console.log('Trade closed, processing the results');
           handleTradeResult(contract);
         }
       }
