@@ -60,6 +60,10 @@ const handleTradeResult = async (contract) => {
     
     if (contract.is_expired || contract.is_sold) {
       const tradePnL = contract.profit;
+      console.log(`tradePnL is ${tradePnL}, Contract profit is ${contract.profit},`);
+      console.log(trade);
+      
+      
       if (tradePnL < 0 && trade.martingaleStep < trade.maxMartingaleSteps) {
         trade.stake *= 2;
         trade.martingaleStep++;
