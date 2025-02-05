@@ -141,9 +141,15 @@ const createWebSocketConnections = () => {
         
           // Find the trade by contract_id
           for (const [accId, trades] of accountTrades) {
+            console.log('1st level looping');
+            
             for (const [tradeId, trade] of trades) {
+              console.log('2nd level looping');
               if (trade.contract_id === contract.contract_id) {
+                
+                console.log('final level looping');
                 if(contract.status !== 'open'){
+                  console.log(`Contract id found, processing the result for ${tradeId}`);
                   handleTradeResult(contract, accId, tradeId);
                   return;
                 }
