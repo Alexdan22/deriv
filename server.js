@@ -26,6 +26,7 @@ const sendToWebSocket = (ws, data) => {
 
 const placeTrade = async (ws, accountId, trade) => {
   const tradeId = uuidv4();
+  const customTradeId = `${accountId}_${tradeId}`;
   
   if (!accountTrades.has(accountId)) {
     accountTrades.set(accountId, new Map());
@@ -42,6 +43,11 @@ const placeTrade = async (ws, accountId, trade) => {
     parentTradeId: trade.parentTradeId || null
   });
 
+  console.log("Account ID:", accountId);
+  console.log("Trade ID:", tradeId);
+  console.log("Custom Trade ID before placing trade:", customTradeId);
+
+
   sendToWebSocket(ws, {
     buy: "1",
     price: trade.stake,
@@ -55,7 +61,7 @@ const placeTrade = async (ws, accountId, trade) => {
       symbol: "frxXAUUSD",
     },
     passthrough: { 
-      custom_trade_id: `${accountId}_${tradeId}` 
+      custom_trade_id: customTradeId 
     }
   });
 
@@ -113,6 +119,15 @@ const createWebSocketConnections = () => {
     
         if (response.msg_type === "buy" && response.contract_id) {
           const customTradeId = response.passthrough?.custom_trade_id;
+          console.log("Custom Trade ID:", customTradeId);
+
+          if (customTradeId.includes("_")) {
+              const [accountId, tradeId] = customTradeId.split("_");
+              console.log("Account ID:", accountId);
+              console.log("Trade ID:", tradeId);
+          } else {
+              console.error("Error: Custom Trade ID format is incorrect:", customTradeId);
+          }
           if (customTradeId) {
             const [accountId, tradeId] = customTradeId.split("_");
             if (accountTrades.has(accountId)) {
