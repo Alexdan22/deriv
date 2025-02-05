@@ -132,12 +132,12 @@ const createWebSocketConnections = () => {
           }
         }
     
-        if (response.msg_type === "proposal_open_contract" && response.proposal_open_contract.status !== 'open') {
+        if (response.msg_type === "proposal_open_contract") {
           const contract = response.proposal_open_contract;
-          console.log(contract);
           
           if (!contract || !contract.contract_id) return;
-        
+          console.log(contract);
+          
           for (const [accId, trades] of accountTrades) {
             for (const [tradeId, trade] of trades) {
               if (trade.contract_id === contract.contract_id) {
