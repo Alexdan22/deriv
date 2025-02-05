@@ -92,6 +92,8 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
     } else {
       console.log(`[${accountId}] Max Martingale steps reached for trade chain ${trade.parentTradeId || tradeId}`);
     }
+  }else{
+    console.log(`[${accountId}] Trade won, Returning to Idle state`);
   }
 
   tradesForAccount.delete(tradeId);
@@ -127,7 +129,7 @@ const createWebSocketConnections = () => {
             if (accountTrades.has(accountId)) {
               const tradesForAccount = accountTrades.get(accountId);
               if (tradesForAccount.has(tradeId)) {
-                tradesForAccount.get(tradeId).contract_id = response.contract_id;
+                tradesForAccount.get(tradeId).contract_id = response.buy.contract_id;
                 console.log(tradesForAccount.get(tradeId));
               }
             }
@@ -140,13 +142,8 @@ const createWebSocketConnections = () => {
           if (!contract || !contract.contract_id) return;
           
           if(contract.status !== 'open'){
-            
             for (const [accountId, trades] of accountTrades) {
-              console.log(accountId);
-              
               for (const [tradeId, trade] of trades) {
-                console.log(tradeId);
-                console.log(trade);
                 if (trade.contract_id === contract.contract_id) {
                   handleTradeResult(contract, accountId, tradeId);
                     return;
