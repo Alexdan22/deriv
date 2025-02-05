@@ -140,19 +140,22 @@ const createWebSocketConnections = () => {
           if (!contract || !contract.contract_id) return;
         
           // Find the trade by contract_id
+          console.log('Processing accountTrades:', accountTrades);
           for (const [accId, trades] of accountTrades) {
-            console.log('1st level looping');
-            
+            console.log(`Account ID: ${accId}, Trades:`, trades);
             for (const [tradeId, trade] of trades) {
-              console.log('2nd level looping');
+              console.log(`Checking Trade ID: ${tradeId}`, trade);
               if (trade.contract_id === contract.contract_id) {
-                
-                console.log('final level looping');
-                if(contract.status !== 'open'){
-                  console.log(`Contract id found, processing the result for ${tradeId}`);
+                console.log(`Contract ID matched: ${contract.contract_id}`);
+                if (contract.status !== 'open') {
+                  console.log(`Contract status (${contract.status}) is not open. Processing result.`);
                   handleTradeResult(contract, accId, tradeId);
                   return;
+                } else {
+                  console.log('Contract status is open. Skipping.');
                 }
+              } else {
+                console.log(`Contract ID mismatch: Trade has ${trade.contract_id}, expected ${contract.contract_id}`);
               }
             }
           }
