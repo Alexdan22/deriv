@@ -43,9 +43,6 @@ const placeTrade = async (ws, accountId, trade) => {
     parentTradeId: trade.parentTradeId || null
   });
 
-  console.log("Account ID:", accountId);
-  console.log("Trade ID:", tradeId);
-  console.log("Custom Trade ID before placing trade:", customTradeId);
 
 
   sendToWebSocket(ws, {
@@ -120,9 +117,7 @@ const createWebSocketConnections = () => {
         const response = JSON.parse(data);
     
         if (response.msg_type === "buy" && response.buy.contract_id) {
-          console.log(response);
           const customTradeId = response.passthrough?.custom_trade_id;
-          console.log("Custom Trade ID:", customTradeId);
           
           if (customTradeId) {
             const [accountId, tradeId] = customTradeId.split("_");
