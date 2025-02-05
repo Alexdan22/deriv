@@ -179,7 +179,6 @@ const processTradeSignal = (message, call) => {
     const zoneCall = zone.get(accountId)
     const conditionCall = condition.get(accountId)
     const confirmationCall = confirmation.get(accountId)
-    console.log(`The Zone is ${zoneCall}, Condition is ${conditionCall}, confirmation is ${confirmationCall} for Account iD - ${accountId}`);
     
     if (
       zone.get(accountId) === call &&
