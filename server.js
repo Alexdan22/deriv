@@ -64,8 +64,6 @@ const placeTrade = async (ws, accountId, trade) => {
       custom_trade_id: customTradeId 
     }
   });
-
-  console.log(`[${accountId}] Trade placed: ${tradeId}`);
 };
 
 const handleTradeResult = async (contract, accountId, tradeId) => {
@@ -118,16 +116,10 @@ const createWebSocketConnections = () => {
         const response = JSON.parse(data);
     
         if (response.msg_type === "buy" && response.contract_id) {
+          console.log(response);
           const customTradeId = response.passthrough?.custom_trade_id;
           console.log("Custom Trade ID:", customTradeId);
-
-          if (customTradeId.includes("_")) {
-              const [accountId, tradeId] = customTradeId.split("_");
-              console.log("Account ID:", accountId);
-              console.log("Trade ID:", tradeId);
-          } else {
-              console.error("Error: Custom Trade ID format is incorrect:", customTradeId);
-          }
+          
           if (customTradeId) {
             const [accountId, tradeId] = customTradeId.split("_");
             if (accountTrades.has(accountId)) {
@@ -184,7 +176,8 @@ const processTradeSignal = (message, call) => {
       case 'CONDITION': condition.set(accountId, call); break;
       case 'CONFIRMATION': confirmation.set(accountId, call); break;
     }
-
+    console.log(`The Zone is ${zone}, Condition is ${condition}, confirmation is ${confirmation} for Account iD - ${accountId}`);
+    
     if (
       zone.get(accountId) === call &&
       condition.get(accountId) === call &&
