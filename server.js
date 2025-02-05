@@ -115,7 +115,7 @@ const createWebSocketConnections = () => {
       try {
         const response = JSON.parse(data);
     
-        if (response.msg_type === "buy" && response.contract_id) {
+        if (response.msg_type === "buy" && response.buy.contract_id) {
           console.log(response);
           const customTradeId = response.passthrough?.custom_trade_id;
           console.log("Custom Trade ID:", customTradeId);
@@ -173,10 +173,10 @@ const processTradeSignal = (message, call) => {
 
     switch(message) {
       case 'ZONE': zone.set(accountId, call); break;
-      case 'CONDITION': condition.set(accountId, call); break;
+      case 'CONDITION': condition.set(accountId, call); break;  
       case 'CONFIRMATION': confirmation.set(accountId, call); break;
     }
-    console.log(`The Zone is ${zone}, Condition is ${condition}, confirmation is ${confirmation} for Account iD - ${accountId}`);
+    console.log(`The Zone is ${zone.call}, Condition is ${condition.call}, confirmation is ${confirmation.call} for Account iD - ${accountId}`);
     
     if (
       zone.get(accountId) === call &&
