@@ -126,14 +126,16 @@ const createWebSocketConnections = () => {
               const tradesForAccount = accountTrades.get(accountId);
               if (tradesForAccount.has(tradeId)) {
                 tradesForAccount.get(tradeId).contract_id = response.contract_id;
-                console.log(`Assigned contract_id ${response.contract_id} to trade ${tradeId} for account ${accountId}`);
+                console.log(`Assigned contract_id ${response.buy.contract_id} to trade ${tradeId} for account ${accountId}`);
               }
             }
           }
         }
     
-        if (response.msg_type === "proposal_open_contract") {
+        if (response.msg_type === "proposal_open_contract" && response.proposal_open_contract.status !== 'open') {
           const contract = response.proposal_open_contract;
+          console.log(contract);
+          
           if (!contract || !contract.contract_id) return;
         
           for (const [accId, trades] of accountTrades) {
@@ -176,7 +178,10 @@ const processTradeSignal = (message, call) => {
       case 'CONDITION': condition.set(accountId, call); break;  
       case 'CONFIRMATION': confirmation.set(accountId, call); break;
     }
-    console.log(`The Zone is ${zone.call}, Condition is ${condition.call}, confirmation is ${confirmation.call} for Account iD - ${accountId}`);
+    const zoneCall = zone.get(accountId)
+    const conditionCall = condition.get(accountId)
+    const confirmationCall = confirmation.get(accountId)
+    console.log(`The Zone is ${zoneCall}, Condition is ${conditionCall}, confirmation is ${confirmationCall} for Account iD - ${accountId}`);
     
     if (
       zone.get(accountId) === call &&
