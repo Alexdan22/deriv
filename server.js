@@ -141,10 +141,20 @@ const createWebSocketConnections = () => {
         
           // Find the trade by contract_id
           console.log('Processing accountTrades:', accountTrades);
+          console.log('Contract being checked:', contract);
+
           for (const [accId, trades] of accountTrades) {
             console.log(`Account ID: ${accId}, Trades:`, trades);
             for (const [tradeId, trade] of trades) {
               console.log(`Checking Trade ID: ${tradeId}`, trade);
+
+              // Skip trades with null contract_id
+              if (trade.contract_id === null) {
+                console.log(`Skipping Trade ID ${tradeId} because contract_id is null.`);
+                continue;
+              }
+
+              // Check if contract_id matches
               if (trade.contract_id === contract.contract_id) {
                 console.log(`Contract ID matched: ${contract.contract_id}`);
                 if (contract.status !== 'open') {
