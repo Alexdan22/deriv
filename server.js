@@ -140,7 +140,6 @@ const createWebSocketConnections = () => {
           if (!contract || !contract.contract_id) return;
           
           if(contract.status !== 'open'){
-            console.log(contract);
             
             for (const [accountId, trades] of accountTrades) {
               console.log(accountId);
