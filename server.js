@@ -126,7 +126,7 @@ const createWebSocketConnections = () => {
     
         if (response.msg_type === "buy") {
           if (!response.buy || !response.buy.contract_id) {
-            // console.log('Invalid buy response:', response);
+            console.log('Invalid buy response:', response);
             return;
         }
           const customTradeId = response.passthrough?.custom_trade_id;
