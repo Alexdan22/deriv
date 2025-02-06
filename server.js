@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
+const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
