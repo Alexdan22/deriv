@@ -86,7 +86,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       await placeTrade(ws, accountId, {
         symbol: trade.symbol,
         call: trade.call,
-        stake: (condition.get(accountId) ? condition.get(accountId).toUpperCase() : trade.stake.toUpperCase()),
+        stake: (condition.get(accountId) ? condition.get(accountId).toUpperCase() : trade.stake),
 
         martingaleStep: trade.martingaleStep + 1,
         parentTradeId: tradeId
@@ -230,6 +230,9 @@ app.post('/webhook', async (req, res) => {
     }
 
   if(zoneTele === confirmationTele){
+    
+    console.log(`Sending message to telegram, The Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
+    
     try {
       if(zoneTele === 'buy'){
         const alertMessage = 
