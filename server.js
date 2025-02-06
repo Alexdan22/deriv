@@ -85,9 +85,8 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
       await placeTrade(ws, accountId, {
         symbol: trade.symbol,
-        call: trade.call,
-        stake: (condition.get(accountId) ? condition.get(accountId).toUpperCase() : trade.stake),
-
+        call: (condition.get(accountId) ? condition.get(accountId).toUpperCase() : trade.call.toUpperCase()),
+        stake: trade.stake,
         martingaleStep: trade.martingaleStep + 1,
         parentTradeId: tradeId
       });
@@ -236,6 +235,7 @@ app.post('/webhook', async (req, res) => {
   if(zoneTele === confirmationTele){
 
     console.log(`Sending message to telegram, The Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
+    confirmationTele = null;
     
     try {
       if(zoneTele === 'call' && zoneTele !== null){
@@ -271,7 +271,6 @@ app.post('/webhook', async (req, res) => {
 
           console.error('Error fetching chat ID:' + error);
   }
-  confirmationTele = null;
   }  
   res.send('Signal processed');
 });
