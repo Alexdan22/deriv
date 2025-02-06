@@ -6,6 +6,8 @@ require('dotenv').config();
 
 const API_TOKENS = process.env.API_TOKENS.split(',');
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const CHANNEL_CHAT_ID = process.env.CHANNEL_CHAT_ID;
 
 const app = express();
 app.use(bodyParser.json());
@@ -14,6 +16,9 @@ const accountTrades = new Map();
 const zone = new Map();
 const condition = new Map();
 const confirmation = new Map();
+
+const zoneTele = null;
+const confirmationTele = null;
 
 const PING_INTERVAL = 30000;
 let wsConnections = [];
@@ -38,7 +43,7 @@ const placeTrade = async (ws, accountId, trade) => {
     call: trade.call,
     stake: trade.stake,
     martingaleStep: trade.martingaleStep || 0,
-    maxMartingaleSteps: 2,
+    maxMartingaleSteps: 1,
     contract_id: null,
     parentTradeId: trade.parentTradeId || null
   });
@@ -53,7 +58,7 @@ const placeTrade = async (ws, accountId, trade) => {
       basis: "stake",
       contract_type: trade.call === "call" ? "CALL" : "PUT",
       currency: "USD",
-      duration: 5,
+      duration: 6,
       duration_unit: "m",
       symbol: "frxXAUUSD",
     },
@@ -74,13 +79,14 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
   if (contract.profit < 0) {
     if (trade.martingaleStep < trade.maxMartingaleSteps) {
-      const newStake = trade.stake * 2;
+      // const newStake = trade.stake * 2;
       const ws = wsConnections.find(conn => conn.accountId === accountId);
 
       await placeTrade(ws, accountId, {
         symbol: trade.symbol,
         call: trade.call,
-        stake: newStake,
+        stake: (condition.get(accountId) ? condition.get(accountId).toUpperCase() : trade.stake.toUpperCase()),
+
         martingaleStep: trade.martingaleStep + 1,
         parentTradeId: tradeId
       });
@@ -88,12 +94,13 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       console.log(`[${accountId}] Martingale step ${trade.martingaleStep + 1} for trade chain ${trade.parentTradeId || tradeId}`);
     } else {
       console.log(`[${accountId}] Max Martingale steps reached for trade chain ${trade.parentTradeId || tradeId}`);
+      tradesForAccount.delete(tradeId);
     }
   }else{
     console.log(`[${accountId}] Trade won, Returning to Idle state`);
+    tradesForAccount.delete(tradeId);
   }
 
-  tradesForAccount.delete(tradeId);
 };
 
 const createWebSocketConnections = () => {
@@ -172,17 +179,21 @@ const processTradeSignal = (message, call) => {
     if (!confirmation.has(accountId)) confirmation.set(accountId, null);
 
     switch(message) {
-      case 'ZONE': zone.set(accountId, call); break;
-      case 'CONDITION': condition.set(accountId, call); break;  
-      case 'CONFIRMATION': confirmation.set(accountId, call); break;
+      case 'ZONE': 
+        zone.set(accountId, call);
+        condition.set(accountId, null);
+        confirmation.set(accountId, null);
+        break;
+      case 'CONDITION': 
+        condition.set(accountId, call); 
+        break;  
+      case 'CONFIRMATION': 
+        confirmation.set(accountId, call); 
+        break;
     }
-    const zoneCall = zone.get(accountId)
-    const conditionCall = condition.get(accountId)
-    const confirmationCall = confirmation.get(accountId)
     
     if (
       zone.get(accountId) === call &&
-      condition.get(accountId) === call &&
       confirmation.get(accountId) === call
     ) {
       const ws = wsConnections.find(conn => conn.accountId === accountId);
@@ -199,12 +210,60 @@ const processTradeSignal = (message, call) => {
   });
 };
 
-app.post('/webhook', (req, res) => {
+app.post('/webhook', async (req, res) => {
   const { symbol, call, message } = req.body;
   if (!symbol || !call || !message) {
     return res.status(400).send('Invalid payload');
   }
+  
   processTradeSignal(message, call);
+
+  switch(message) {
+      case 'ZONE': 
+        zoneTele = call;
+        confirmationTele = null;
+        break;
+      case 'CONFIRMATION': 
+        confirmationTele = call 
+        break;
+    }
+
+  if(zoneTele === confirmationTele){
+    try {
+      if(zoneTele === 'buy'){
+        const alertMessage = 
+        `Hello Traders
+        
+        XAUUSD (Gold  Spot)
+        
+        BUY 🟢🟢🟢`
+
+        // Send the message to Telegram
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          chat_id: CHANNEL_CHAT_ID,
+          text: alertMessage,
+        });
+
+      }else{
+        const alertMessage = 
+        `Hello Traders
+        
+        XAUUSD (Gold  Spot)
+        
+        SELL 🔴🔴🔴`
+        // Send the message to Telegram
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            chat_id: CHANNEL_CHAT_ID,
+            text: alertMessage,
+        });
+      }
+      
+
+  } catch (error) {
+
+          console.error('Error fetching chat ID:' + error);
+  }
+  }  
   res.send('Signal processed');
 });
 
