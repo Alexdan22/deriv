@@ -18,8 +18,8 @@ const zone = new Map();
 const condition = new Map();
 const confirmation = new Map();
 
-const zoneTele = null;
-const confirmationTele = null;
+let zoneTele = null;
+let confirmationTele = null;
 
 const PING_INTERVAL = 30000;
 let wsConnections = [];
