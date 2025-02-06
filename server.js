@@ -242,9 +242,9 @@ app.post('/webhook', async (req, res) => {
         const alertMessage = 
         `Hello Traders
         
-        XAUUSD (Gold  Spot)
+XAUUSD (Gold  Spot)
         
-        BUY 🟢🟢🟢`
+BUY 🟢🟢🟢`
 
         // Send the message to Telegram
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -256,9 +256,9 @@ app.post('/webhook', async (req, res) => {
         const alertMessage = 
         `Hello Traders
         
-        XAUUSD (Gold  Spot)
+XAUUSD (Gold  Spot)
         
-        SELL 🔴🔴🔴`
+SELL 🔴🔴🔴`
         // Send the message to Telegram
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             chat_id: CHANNEL_CHAT_ID,
