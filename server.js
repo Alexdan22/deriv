@@ -124,7 +124,11 @@ const createWebSocketConnections = () => {
       try {
         const response = JSON.parse(data);
     
-        if (response.msg_type === "buy" && response.buy.contract_id) {
+        if (response.msg_type === "buy") {
+          if (!response.buy || !response.buy.contract_id) {
+            // console.log('Invalid buy response:', response);
+            return;
+        }
           const customTradeId = response.passthrough?.custom_trade_id;
           
           if (customTradeId) {
@@ -230,11 +234,11 @@ app.post('/webhook', async (req, res) => {
     }
 
   if(zoneTele === confirmationTele){
-    
+
     console.log(`Sending message to telegram, The Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
     
     try {
-      if(zoneTele === 'buy'){
+      if(zoneTele === 'call' && zoneTele !== null){
         const alertMessage = 
         `Hello Traders
         
@@ -267,6 +271,7 @@ app.post('/webhook', async (req, res) => {
 
           console.error('Error fetching chat ID:' + error);
   }
+  confirmationTele = null;
   }  
   res.send('Signal processed');
 });
