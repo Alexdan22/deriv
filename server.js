@@ -196,7 +196,6 @@ const processTradeSignal = (message, call) => {
         confirmation.set(accountId, call); 
         break;
     }
-    console.log(`Webhook received, Updated params are Zone - ${zone.get(accountId)}, Condition - ${condition.get(accountId)}, Confirmation - ${confirmation.get(accountId)}`);
     
     if (
       zone.get(accountId) === call &&
