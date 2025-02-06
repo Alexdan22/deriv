@@ -83,14 +83,24 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       // const newStake = trade.stake * 2;
       const ws = wsConnections.find(conn => conn.accountId === accountId);
       console.log(`Trade processed and Zone - ${zone.get(accountId)}, Condition - ${condition.get(accountId)}, Confirmation - ${confirmation.get(accountId)}`);
-    
-      await placeTrade(ws, accountId, {
-        symbol: trade.symbol,
-        call: trade.call,
-        stake: trade.stake,
-        martingaleStep: trade.martingaleStep + 1,
-        parentTradeId: tradeId
-      });
+      if(condition.get(accountId) !== null){
+        await placeTrade(ws, accountId, {
+          symbol: trade.symbol,
+          call: trade.call,
+          stake: condition.get(accountId) === "call" ? "CALL" : "PUT",
+          martingaleStep: trade.martingaleStep + 1,
+          parentTradeId: tradeId
+        });
+      }else{
+        await placeTrade(ws, accountId, {
+          symbol: trade.symbol,
+          call: trade.call,
+          stake: trade.stake,
+          martingaleStep: trade.martingaleStep + 1,
+          parentTradeId: tradeId
+        });
+      }
+      
 
       console.log(`[${accountId}] Martingale step ${trade.martingaleStep + 1} for trade chain ${trade.parentTradeId || tradeId}`);
     } else {
