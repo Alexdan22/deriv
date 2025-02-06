@@ -82,10 +82,11 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
     if (trade.martingaleStep < trade.maxMartingaleSteps) {
       // const newStake = trade.stake * 2;
       const ws = wsConnections.find(conn => conn.accountId === accountId);
-
+      console.log(`Trade processed and Zone - ${zone.get(accountId)}, Condition - ${condition.get(accountId)}, Confirmation - ${confirmation.get(accountId)}`);
+    
       await placeTrade(ws, accountId, {
         symbol: trade.symbol,
-        call: (condition.get(accountId) ? condition.get(accountId).toUpperCase() : trade.call.toUpperCase()),
+        call: trade.call,
         stake: trade.stake,
         martingaleStep: trade.martingaleStep + 1,
         parentTradeId: tradeId
