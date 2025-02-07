@@ -2,7 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const WebSocket = require('ws');
 const axios = require('axios');
+const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
+const { DateTime } = require('luxon');
 require('dotenv').config();
 
 const API_TOKENS = process.env.API_TOKENS.split(',');
@@ -12,6 +14,32 @@ const CHANNEL_CHAT_ID = process.env.CHANNEL_CHAT_ID;
 
 const app = express();
 app.use(bodyParser.json());
+
+mongoose.set('strictQuery', false);
+// mongoose.connect("mongodb://localhost:27017/derivTradeDB");
+mongoose.connect("mongodb+srv://alex-dan:Admin-12345@cluster0.wirm8.mongodb.net/derivTradeDB");
+
+const profitSchema = new mongoose.Schema({
+  email: String,
+  apiToken: String,
+  balance: Number,
+  profitThreshold: Number,
+  pnl: Number,
+  trades:[
+    {
+      call: String,
+      entry_price: Number,
+      exit_price: Number,
+      status: String,
+      profit: Number
+    }
+  ],
+  date: String
+});
+
+const timeZone = 'Asia/Kolkata';
+const currentTimeInTimeZone = DateTime.now().setZone(timeZone);
+
 
 const accountTrades = new Map();
 const zone = new Map();
@@ -86,8 +114,8 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       if(condition.get(accountId) !== null){
         await placeTrade(ws, accountId, {
           symbol: trade.symbol,
-          call: trade.call,
-          stake: condition.get(accountId) === "call" ? "CALL" : "PUT",
+          call: condition.get(accountId) === "call" ? "CALL" : "PUT",
+          stake: trade.call,
           martingaleStep: trade.martingaleStep + 1,
           parentTradeId: tradeId
         });
@@ -114,6 +142,10 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
 };
 
+const setProfit = async (response) => {
+
+}
+
 const createWebSocketConnections = () => {
   wsConnections.forEach(ws => ws?.close());
   
@@ -129,6 +161,18 @@ const createWebSocketConnections = () => {
         sendToWebSocket(ws, { proposal_open_contract: 1, subscribe: 1 });
       }, PING_INTERVAL);
     });
+
+    ws.on('authorize', (data) => {
+      try {
+
+        const response = JSON.parse(data);
+        setProfit(response);
+        return;
+
+      } catch (error) {
+        console.error("Authorization failed:", error);
+      }
+    })
 
     ws.on("message", (data) => {
       try {
