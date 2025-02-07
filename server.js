@@ -68,7 +68,7 @@ const placeTrade = async (ws, accountId, trade) => {
   let month = currentTimeInTimeZone.month;
   let date = currentTimeInTimeZone.day;
 
-  const uniqueDate = `${date}-${month}-${year}_${accountId}`;
+  const uniqueDate = `${date}-${month}-${year}_${ws.accountId}`;
   const tradeId = uuidv4();
   const customTradeId = `${accountId}_${tradeId}`;
   const user = await Threshold.findOne({uniqueDate});
