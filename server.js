@@ -21,6 +21,7 @@ mongoose.connect("mongodb+srv://alex-dan:Admin-12345@cluster0.wirm8.mongodb.net/
 
 const profitSchema = new mongoose.Schema({
   email: String,
+  name: String,
   apiToken: String,
   balance: Number,
   stake: Number,
@@ -152,14 +153,15 @@ const setProfit = async (ws, response) => {
   let date = currentTimeInTimeZone.day;
 
   const apiToken = ws.accountId;
-  const {email, balance} = response.authorize;
+  const {email, balance, fullname} = response.authorize;
   const uniqueDate = `${date}-${month}-${year}_${apiToken}`;
-  const foundUser = await Threshold.findOne({date:uniqueDate});
+  const foundUser = await Threshold.findOne({uniqueDate});
 
   if(!foundUser){
     if(balance >59 && balance < 119){
       const today = new Threshold({
         email,
+        name: fullname,
         balance,
         stake:4,
         uniqueDate,
@@ -174,6 +176,7 @@ const setProfit = async (ws, response) => {
     }else if(balance >119 && balance < 179){
       const today = new Threshold({
         email,
+        name: fullname,
         balance,
         stake:8,
         uniqueDate,
@@ -188,6 +191,7 @@ const setProfit = async (ws, response) => {
     }else if(balance >179 && balance < 299){
       const today = new Threshold({
         email,
+        name: fullname,
         balance,
         stake:12,
         uniqueDate,
@@ -202,6 +206,7 @@ const setProfit = async (ws, response) => {
     }else if(balance > 299){
       const today = new Threshold({
         email,
+        name: fullname,
         balance,
         stake:20,
         uniqueDate,
