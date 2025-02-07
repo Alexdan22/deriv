@@ -74,7 +74,7 @@ const placeTrade = async (ws, accountId, trade) => {
   const user = await Threshold.findOne({uniqueDate});
   
 
-  if(!user){
+  if(user){
     //Process trade further
     if(user.profitThreshold > user.pnl){
       //Placing Trade
@@ -116,8 +116,6 @@ const placeTrade = async (ws, accountId, trade) => {
   }else{
     //User not for, skipping trade
       console.log(`[${accountId}] Account not found, skipping trade`);
-      console.log(uniqueDate , accountId);
-      console.log(user);
       
       
   }
@@ -400,7 +398,6 @@ app.post('/webhook', async (req, res) => {
     }
 
 
-    console.log(`Sending message to telegram, The Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
     confirmationTele = null;
     
     try {
@@ -417,8 +414,6 @@ BUY 🟢🟢🟢`
         //   chat_id: CHANNEL_CHAT_ID,
         //   text: alertMessage,
         // });
-        console.log(req.body);
-        console.log(` Entered buy signal - Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
 
       } else if (zoneTele === 'put' && confirmationTele === 'put') {
         const alertMessage = 
@@ -432,11 +427,7 @@ SELL 🔴🔴🔴`
         //     chat_id: CHANNEL_CHAT_ID,
         //     text: alertMessage,
         // });
-        console.log(req.body);
-        console.log(`Entered sell signal - Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
       }else{
-        console.log(req.body);
-        console.log(`Entered invalid signal - Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
       }
       
 
