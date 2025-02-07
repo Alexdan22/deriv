@@ -197,7 +197,7 @@ const setProfit = async (ws, response) => {
         apiToken,
         date: `${date}-${month}-${year}`,
         pnl: 0,
-        profitThreshold:5
+        profitThreshold:6
   
       });
       today.save();
@@ -212,12 +212,12 @@ const setProfit = async (ws, response) => {
         apiToken,
         date: `${date}-${month}-${year}`,
         pnl: 0,
-        profitThreshold:5
+        profitThreshold:12
   
       });
       today.save();
 
-    }else if(balance >8999 && balance < 9999){
+    }else if(balance >179 && balance < 299){
       const today = new Threshold({
         email,
         name: fullname,
@@ -227,12 +227,12 @@ const setProfit = async (ws, response) => {
         apiToken,
         date: `${date}-${month}-${year}`,
         pnl: 0,
-        profitThreshold:5
+        profitThreshold:18
   
       });
       today.save();
 
-    }else if(balance > 9999){
+    }else if(balance > 299){
       const today = new Threshold({
         email,
         name: fullname,
@@ -242,7 +242,7 @@ const setProfit = async (ws, response) => {
         apiToken,
         date: `${date}-${month}-${year}`,
         pnl: 0,
-        profitThreshold:5
+        profitThreshold:30
   
       });
       today.save();
@@ -347,17 +347,13 @@ const processTradeSignal = (message, call) => {
       case 'ZONE': 
         zone.set(accountId, call);
         condition.set(accountId, null);
-        confirmation.set(accountId, call);
+        confirmation.set(accountId, null);
         break;
       case 'CONDITION': 
-        condition.set(accountId, call); 
-        zone.set(accountId, call);
-        confirmation.set(accountId, call);
+        condition.set(accountId, call);
         break;  
       case 'CONFIRMATION': 
-        // confirmation.set(accountId, call); 
-        zone.set(accountId, call);
-        confirmation.set(accountId, call);
+        confirmation.set(accountId, call); 
         break;
     }
     
@@ -369,8 +365,7 @@ const processTradeSignal = (message, call) => {
       if (ws) {
         placeTrade(ws, accountId, {
           symbol: 'frxXAUUSD',
-          call,
-          stake: 10
+          call
         });
         condition.set(accountId, null);
         confirmation.set(accountId, null);
@@ -410,10 +405,10 @@ XAUUSD (Gold  Spot)
 BUY 🟢🟢🟢`
 
         // Send the message to Telegram
-        // await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        //   chat_id: CHANNEL_CHAT_ID,
-        //   text: alertMessage,
-        // });
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          chat_id: CHANNEL_CHAT_ID,
+          text: alertMessage,
+        });
 
       } else if (zoneTele === 'put' && confirmationTele === 'put') {
         const alertMessage = 
@@ -423,11 +418,10 @@ XAUUSD (Gold  Spot)
         
 SELL 🔴🔴🔴`
         // Send the message to Telegram
-        // await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        //     chat_id: CHANNEL_CHAT_ID,
-        //     text: alertMessage,
-        // });
-      }else{
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            chat_id: CHANNEL_CHAT_ID,
+            text: alertMessage,
+        });
       }
       
 
