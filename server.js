@@ -391,13 +391,12 @@ app.post('/webhook', async (req, res) => {
         break;
     }
 
-  if(zoneTele === confirmationTele){
 
     console.log(`Sending message to telegram, The Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
     confirmationTele = null;
     
     try {
-      if(zoneTele === 'call' && zoneTele !== null){
+      if(zoneTele === 'call' && confirmationTele === 'call'){
         const alertMessage = 
         `Hello Traders
         
@@ -411,8 +410,9 @@ BUY 🟢🟢🟢`
         //   text: alertMessage,
         // });
         console.log(req.body);
+        console.log(` Entered buy signal - Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
 
-      } else if (zoneTele === 'put' && zoneTele !== null) {
+      } else if (zoneTele === 'put' && confirmationTele === 'put') {
         const alertMessage = 
         `Hello Traders
         
@@ -425,8 +425,10 @@ SELL 🔴🔴🔴`
         //     text: alertMessage,
         // });
         console.log(req.body);
+        console.log(`Entered sell signal - Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
       }else{
         console.log(req.body);
+        console.log(`Entered invalid signal - Zone is ${zoneTele} and Confirmation is ${confirmationTele}`);
       }
       
 
@@ -434,7 +436,7 @@ SELL 🔴🔴🔴`
 
           console.error('Error fetching chat ID:' + error);
   }
-  }  
+    
   res.send('Signal processed');
 });
 
