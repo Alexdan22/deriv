@@ -167,21 +167,21 @@ const createWebSocketConnections = () => {
       }, PING_INTERVAL);
     });
 
-    ws.on('authorize', (data) => {
-      try {
-
-        const response = JSON.parse(data);
-        setProfit(ws, response);
-        return;
-
-      } catch (error) {
-        console.error("Authorization failed:", error);
-      }
-    })
-
     ws.on("message", (data) => {
       try {
         const response = JSON.parse(data);
+
+        if (response.msg_type === "authorize") {
+          try {
+
+            const response = JSON.parse(data);
+            setProfit(ws, response);
+            return;
+    
+          } catch (error) {
+            console.error("Authorization failed:", error);
+          }
+        }
     
         if (response.msg_type === "buy") {
           if (!response.buy || !response.buy.contract_id) {
