@@ -374,61 +374,66 @@ const processTradeSignal = (message, call) => {
   });
 };
 
+const sendTelegramMessage = async (message, call) => {
+  
+  switch(message) {
+    case 'ZONE': 
+      zoneTele = call;
+      confirmationTele = null;
+      break;
+    case 'CONFIRMATION': 
+      confirmationTele = call 
+      break;
+  }
+
+
+  
+  try {
+    if(zoneTele === 'call' && confirmationTele === 'call'){
+      confirmationTele = null
+      const alertMessage = 
+      `Hello Traders
+      
+XAUUSD (Gold  Spot)
+      
+BUY 🟢🟢🟢`
+
+      // Send the message to Telegram
+      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        chat_id: CHANNEL_CHAT_ID,
+        text: alertMessage,
+      });
+
+    } else if (zoneTele === 'put' && confirmationTele === 'put') {
+      confirmationTele = null
+      const alertMessage = 
+      `Hello Traders
+      
+XAUUSD (Gold  Spot)
+      
+SELL 🔴🔴🔴`
+      // Send the message to Telegram
+      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          chat_id: CHANNEL_CHAT_ID,
+          text: alertMessage,
+      });
+    }
+    
+
+  } catch (error) {
+
+          console.error('Error fetching chat ID:' + error);
+  }
+}
+
 app.post('/webhook', async (req, res) => {
   const { symbol, call, message } = req.body;
   if (!symbol || !call || !message) {
     return res.status(400).send('Invalid payload');
   }
   
+  sendTelegramMessage(message, call)
   processTradeSignal(message, call);
-
-  switch(message) {
-      case 'ZONE': 
-        zoneTele = call;
-        confirmationTele = null;
-        break;
-      case 'CONFIRMATION': 
-        confirmationTele = call 
-        break;
-    }
-
-
-    confirmationTele = null;
-    
-    try {
-      if(zoneTele === 'call' && confirmationTele === 'call'){
-        const alertMessage = 
-        `Hello Traders
-        
-XAUUSD (Gold  Spot)
-        
-BUY 🟢🟢🟢`
-
-        // Send the message to Telegram
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          chat_id: CHANNEL_CHAT_ID,
-          text: alertMessage,
-        });
-
-      } else if (zoneTele === 'put' && confirmationTele === 'put') {
-        const alertMessage = 
-        `Hello Traders
-        
-XAUUSD (Gold  Spot)
-        
-SELL 🔴🔴🔴`
-        // Send the message to Telegram
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            chat_id: CHANNEL_CHAT_ID,
-            text: alertMessage,
-        });
-      }
-      
-
-  } catch (error) {
-
-          console.error('Error fetching chat ID:' + error);
-  }
     
   res.send('Signal processed');
 });
