@@ -116,6 +116,8 @@ const placeTrade = async (ws, accountId, trade) => {
   }else{
     //User not for, skipping trade
       console.log(`[${accountId}] Account not found, skipping trade`);
+      console.log(uniqueDate , accountId);
+      
   }
 };
 
