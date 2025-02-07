@@ -94,7 +94,7 @@ const placeTrade = async (ws, accountId, trade) => {
 
         sendToWebSocket(ws, {
           buy: "1",
-          price: trade.stake,
+          price: user.stake,
           parameters: {
             amount: user.stake,
             basis: "stake",
