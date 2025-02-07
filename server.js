@@ -117,6 +117,8 @@ const placeTrade = async (ws, accountId, trade) => {
     //User not for, skipping trade
       console.log(`[${accountId}] Account not found, skipping trade`);
       console.log(uniqueDate , accountId);
+      console.log(user);
+      
       
   }
 };
@@ -347,13 +349,17 @@ const processTradeSignal = (message, call) => {
       case 'ZONE': 
         zone.set(accountId, call);
         condition.set(accountId, null);
-        confirmation.set(accountId, null);
+        confirmation.set(accountId, call);
         break;
       case 'CONDITION': 
         condition.set(accountId, call); 
+        zone.set(accountId, call);
+        confirmation.set(accountId, call);
         break;  
       case 'CONFIRMATION': 
-        confirmation.set(accountId, call); 
+        // confirmation.set(accountId, call); 
+        zone.set(accountId, call);
+        confirmation.set(accountId, call);
         break;
     }
     
