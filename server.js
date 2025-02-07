@@ -23,6 +23,7 @@ const profitSchema = new mongoose.Schema({
   email: String,
   apiToken: String,
   balance: Number,
+  stake: Number,
   profitThreshold: Number,
   pnl: Number,
   trades:[
@@ -34,7 +35,8 @@ const profitSchema = new mongoose.Schema({
       profit: Number
     }
   ],
-  date: String
+  date: String,
+  uniqueDate: String
 });
 
 const Threshold = new mongoose.model('Threshold', profitSchema);
@@ -145,10 +147,75 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 };
 
 const setProfit = async (ws, response) => {
-  console.log(`API TOKEN is [${ws.accountId}]`);
+  let year = currentTimeInTimeZone.year;
+  let month = currentTimeInTimeZone.month;
+  let date = currentTimeInTimeZone.day;
+
+  const apiToken = ws.accountId;
+  const {email, balance} = response.authorize;
+  const uniqueDate = `${date}-${month}-${year}_${apiToken}`;
+  const foundUser = await Threshold.findOne({date:uniqueDate});
+
+  if(!foundUser){
+    if(balance >59 && balance < 119){
+      const today = new Threshold({
+        email,
+        balance,
+        stake:4,
+        uniqueDate,
+        apiToken,
+        date: `${date}-${month}-${year}`,
+        pnl: 0,
+        profitThreshold:6
   
-  console.log(response);
+      });
+      today.save();
+
+    }else if(balance >119 && balance < 179){
+      const today = new Threshold({
+        email,
+        balance,
+        stake:8,
+        uniqueDate,
+        apiToken,
+        date: `${date}-${month}-${year}`,
+        pnl: 0,
+        profitThreshold:12
   
+      });
+      today.save();
+
+    }else if(balance >179 && balance < 299){
+      const today = new Threshold({
+        email,
+        balance,
+        stake:12,
+        uniqueDate,
+        apiToken,
+        date: `${date}-${month}-${year}`,
+        pnl: 0,
+        profitThreshold:18
+  
+      });
+      today.save();
+
+    }else if(balance > 299){
+      const today = new Threshold({
+        email,
+        balance,
+        stake:20,
+        uniqueDate,
+        apiToken,
+        date: `${date}-${month}-${year}`,
+        pnl: 0,
+        profitThreshold:30
+  
+      });
+      today.save();
+
+    }
+    
+  }
 }
 
 const createWebSocketConnections = () => {
@@ -176,7 +243,7 @@ const createWebSocketConnections = () => {
 
             const response = JSON.parse(data);
             setProfit(ws, response);
-            return;
+            return; 
     
           } catch (error) {
             console.error("Authorization failed:", error);
@@ -312,7 +379,7 @@ BUY 🟢🟢🟢`
           text: alertMessage,
         });
 
-      }else{
+      } else if (zoneTele === 'put' && zoneTele !== null) {
         const alertMessage = 
         `Hello Traders
         
@@ -324,6 +391,8 @@ SELL 🔴🔴🔴`
             chat_id: CHANNEL_CHAT_ID,
             text: alertMessage,
         });
+      }else{
+        console.log(`Invalid webhook call received - [${req.body}]`);
       }
       
 
