@@ -64,45 +64,73 @@ const sendToWebSocket = (ws, data) => {
 };
 
 const placeTrade = async (ws, accountId, trade) => {
+  let year = currentTimeInTimeZone.year;
+  let month = currentTimeInTimeZone.month;
+  let date = currentTimeInTimeZone.day;
+
+  const uniqueDate = `${date}-${month}-${year}_${accountId}`;
   const tradeId = uuidv4();
   const customTradeId = `${accountId}_${tradeId}`;
+  const user = await Threshold.findOne({uniqueDate});
   
-  if (!accountTrades.has(accountId)) {
-    accountTrades.set(accountId, new Map());
-  }
 
-  const tradesForAccount = accountTrades.get(accountId);
-  tradesForAccount.set(tradeId, {
-    symbol: "frxXAUUSD",
-    call: trade.call,
-    stake: trade.stake,
-    martingaleStep: trade.martingaleStep || 0,
-    maxMartingaleSteps: 1,
-    contract_id: null,
-    parentTradeId: trade.parentTradeId || null
-  });
+  if(!user){
+    //Process trade further
+    if(user.profitThreshold > user.pnl){
+      //Placing Trade
+        if (!accountTrades.has(accountId)) {
+          accountTrades.set(accountId, new Map());
+        }
+        const tradesForAccount = accountTrades.get(accountId);
+        tradesForAccount.set(tradeId, {
+          symbol: "frxXAUUSD",
+          call: trade.call,
+          stake: user.stake,
+          martingaleStep: trade.martingaleStep || 0,
+          maxMartingaleSteps: 1,
+          contract_id: null,
+          parentTradeId: trade.parentTradeId || null
+        });
 
-
-
-  sendToWebSocket(ws, {
-    buy: "1",
-    price: trade.stake,
-    parameters: {
-      amount: trade.stake,
-      basis: "stake",
-      contract_type: trade.call === "call" ? "CALL" : "PUT",
-      currency: "USD",
-      duration: 6,
-      duration_unit: "m",
-      symbol: "frxXAUUSD",
-    },
-    passthrough: { 
-      custom_trade_id: customTradeId 
+        sendToWebSocket(ws, {
+          buy: "1",
+          price: trade.stake,
+          parameters: {
+            amount: user.stake,
+            basis: "stake",
+            contract_type: trade.call === "call" ? "CALL" : "PUT",
+            currency: "USD",
+            duration: 6,
+            duration_unit: "m",
+            symbol: "frxXAUUSD",
+          },
+          passthrough: { 
+            custom_trade_id: customTradeId 
+          }
+        });
+    }else{
+      //Profit threshold reached, skipping trades
+      console.log(`[${accountId}] Profit threshold reached for the day, skipping trade`);
+      
     }
-  });
+  }else{
+    //User not for, skipping trade
+      console.log(`[${accountId}] Account not found, skipping trade`);
+  }
 };
 
 const handleTradeResult = async (contract, accountId, tradeId) => {
+  let year = currentTimeInTimeZone.year;
+  let month = currentTimeInTimeZone.month;
+  let date = currentTimeInTimeZone.day;
+
+  const uniqueDate = `${date}-${month}-${year}_${accountId}`;
+  const user = await Threshold.findOne({uniqueDate});
+
+  const newValue = user.pnl + contract.profit;
+  await Threshold.updateOne({uniqueDate}, {$set:{pnl:newValue}});
+
+
   console.log(`Trade results proccessed for Account ID - ${accountId}`);
   
   const tradesForAccount = accountTrades.get(accountId);
@@ -115,12 +143,11 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
     if (trade.martingaleStep < trade.maxMartingaleSteps) {
       // const newStake = trade.stake * 2;
       const ws = wsConnections.find(conn => conn.accountId === accountId);
-      console.log(`Trade processed and Zone - ${zone.get(accountId)}, Condition - ${condition.get(accountId)}, Confirmation - ${confirmation.get(accountId)}`);
       if(condition.get(accountId) !== null){
         await placeTrade(ws, accountId, {
           symbol: trade.symbol,
           call: condition.get(accountId) === "call" ? "CALL" : "PUT",
-          stake: trade.call,
+          stake: trade.stake,
           martingaleStep: trade.martingaleStep + 1,
           parentTradeId: tradeId
         });
@@ -168,7 +195,7 @@ const setProfit = async (ws, response) => {
         apiToken,
         date: `${date}-${month}-${year}`,
         pnl: 0,
-        profitThreshold:6
+        profitThreshold:5
   
       });
       today.save();
@@ -183,12 +210,12 @@ const setProfit = async (ws, response) => {
         apiToken,
         date: `${date}-${month}-${year}`,
         pnl: 0,
-        profitThreshold:12
+        profitThreshold:5
   
       });
       today.save();
 
-    }else if(balance >179 && balance < 299){
+    }else if(balance >8999 && balance < 9999){
       const today = new Threshold({
         email,
         name: fullname,
@@ -198,12 +225,12 @@ const setProfit = async (ws, response) => {
         apiToken,
         date: `${date}-${month}-${year}`,
         pnl: 0,
-        profitThreshold:18
+        profitThreshold:5
   
       });
       today.save();
 
-    }else if(balance > 299){
+    }else if(balance > 9999){
       const today = new Threshold({
         email,
         name: fullname,
@@ -213,7 +240,7 @@ const setProfit = async (ws, response) => {
         apiToken,
         date: `${date}-${month}-${year}`,
         pnl: 0,
-        profitThreshold:30
+        profitThreshold:5
   
       });
       today.save();
@@ -379,10 +406,11 @@ XAUUSD (Gold  Spot)
 BUY 🟢🟢🟢`
 
         // Send the message to Telegram
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          chat_id: CHANNEL_CHAT_ID,
-          text: alertMessage,
-        });
+        // await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        //   chat_id: CHANNEL_CHAT_ID,
+        //   text: alertMessage,
+        // });
+        console.log(req.body);
 
       } else if (zoneTele === 'put' && zoneTele !== null) {
         const alertMessage = 
@@ -392,12 +420,13 @@ XAUUSD (Gold  Spot)
         
 SELL 🔴🔴🔴`
         // Send the message to Telegram
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            chat_id: CHANNEL_CHAT_ID,
-            text: alertMessage,
-        });
+        // await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        //     chat_id: CHANNEL_CHAT_ID,
+        //     text: alertMessage,
+        // });
+        console.log(req.body);
       }else{
-        console.log(`Invalid webhook call received - [${req.body}]`);
+        console.log(req.body);
       }
       
 
