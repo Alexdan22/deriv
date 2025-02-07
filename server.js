@@ -37,6 +37,8 @@ const profitSchema = new mongoose.Schema({
   date: String
 });
 
+const Threshold = new mongoose.model('Threshold', profitSchema);
+
 const timeZone = 'Asia/Kolkata';
 const currentTimeInTimeZone = DateTime.now().setZone(timeZone);
 
@@ -142,8 +144,11 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
 };
 
-const setProfit = async (response) => {
-
+const setProfit = async (ws, response) => {
+  console.log(`API TOKEN is [${ws.accountId}]`);
+  
+  console.log(response);
+  
 }
 
 const createWebSocketConnections = () => {
@@ -166,7 +171,7 @@ const createWebSocketConnections = () => {
       try {
 
         const response = JSON.parse(data);
-        setProfit(response);
+        setProfit(ws, response);
         return;
 
       } catch (error) {
