@@ -48,8 +48,9 @@ const currentTimeInTimeZone = DateTime.now().setZone(timeZone);
 
 const accountTrades = new Map();
 const zone = new Map();
-const condition = new Map();
+const label = new Map();
 const confirmation = new Map();
+const condition = new Map();
 
 let zoneTele = null;
 let confirmationTele = null;
@@ -140,39 +141,39 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
   const trade = tradesForAccount.get(tradeId);
   if (!trade) return;
-
-  if (contract.profit < 0) {
-    if (trade.martingaleStep < trade.maxMartingaleSteps) {
-      // const newStake = trade.stake * 2;
-      const ws = wsConnections.find(conn => conn.accountId === accountId);
-      if(condition.get(accountId) !== null){
-        await placeTrade(ws, accountId, {
-          symbol: trade.symbol,
-          call: condition.get(accountId) === "call" ? "CALL" : "PUT",
-          stake: trade.stake,
-          martingaleStep: trade.martingaleStep + 1,
-          parentTradeId: tradeId
-        });
-      }else{
-        await placeTrade(ws, accountId, {
-          symbol: trade.symbol,
-          call: trade.call,
-          stake: trade.stake,
-          martingaleStep: trade.martingaleStep + 1,
-          parentTradeId: tradeId
-        });
-      }
+  tradesForAccount.delete(tradeId);
+  // if (contract.profit < 0) {
+  //   if (trade.martingaleStep < trade.maxMartingaleSteps) {
+  //     // const newStake = trade.stake * 2;
+  //     const ws = wsConnections.find(conn => conn.accountId === accountId);
+  //     if(condition.get(accountId) !== null){
+  //       await placeTrade(ws, accountId, {
+  //         symbol: trade.symbol,
+  //         call: condition.get(accountId) === "call" ? "CALL" : "PUT",
+  //         stake: trade.stake,
+  //         martingaleStep: trade.martingaleStep + 1,
+  //         parentTradeId: tradeId
+  //       });
+  //     }else{
+  //       await placeTrade(ws, accountId, {
+  //         symbol: trade.symbol,
+  //         call: trade.call,
+  //         stake: trade.stake,
+  //         martingaleStep: trade.martingaleStep + 1,
+  //         parentTradeId: tradeId
+  //       });
+  //     }
       
 
-      console.log(`[${accountId}] Martingale step ${trade.martingaleStep + 1} for trade chain ${trade.parentTradeId || tradeId}`);
-    } else {
-      console.log(`[${accountId}] Max Martingale steps reached for trade chain ${trade.parentTradeId || tradeId}`);
-      tradesForAccount.delete(tradeId);
-    }
-  }else{
-    console.log(`[${accountId}] Trade won, Returning to Idle state`);
-    tradesForAccount.delete(tradeId);
-  }
+  //     console.log(`[${accountId}] Martingale step ${trade.martingaleStep + 1} for trade chain ${trade.parentTradeId || tradeId}`);
+  //   } else {
+  //     console.log(`[${accountId}] Max Martingale steps reached for trade chain ${trade.parentTradeId || tradeId}`);
+  //     tradesForAccount.delete(tradeId);
+  //   }
+  // }else{
+  //   console.log(`[${accountId}] Trade won, Returning to Idle state`);
+    
+  // }
 
 };
 
@@ -340,35 +341,39 @@ const createWebSocketConnections = () => {
 const processTradeSignal = (message, call) => {
   API_TOKENS.forEach(accountId => {
     if (!zone.has(accountId)) zone.set(accountId, null);
-    if (!condition.has(accountId)) condition.set(accountId, null);
+    if (!label.has(accountId)) label.set(accountId, null);
     if (!confirmation.has(accountId)) confirmation.set(accountId, null);
+    if (!condition.has(accountId)) condition.set(accountId, null);
 
     switch(message) {
       case 'ZONE': 
         zone.set(accountId, call);
-        condition.set(accountId, null);
-        confirmation.set(accountId, null);
         break;
-      case 'CONDITION': 
-        condition.set(accountId, call);
+      case 'LABEL': 
+        label.set(accountId, call);
         break;  
       case 'CONFIRMATION': 
         confirmation.set(accountId, call); 
+        break;  
+      case 'CONDITION': 
+        condition.set(accountId, call); 
         break;
     }
     
-    if (
-      zone.get(accountId) === call &&
-      confirmation.get(accountId) === call
-    ) {
-      const ws = wsConnections.find(conn => conn.accountId === accountId);
-      if (ws) {
-        placeTrade(ws, accountId, {
-          symbol: 'frxXAUUSD',
-          call
-        });
-        condition.set(accountId, null);
-        confirmation.set(accountId, null);
+    if(message !== 'LABEL'){
+      if (
+        zone.get(accountId) === call &&
+        label.get(accountId) === call &&
+        confirmation.get(accountId) === call &&
+        condition.get(accountId) === call
+      ) {
+        const ws = wsConnections.find(conn => conn.accountId === accountId);
+        if (ws) {
+          placeTrade(ws, accountId, {
+            symbol: 'frxXAUUSD',
+            call
+          });
+        }
       }
     }
   });
