@@ -360,20 +360,18 @@ const processTradeSignal = (message, call) => {
         break;
     }
     
-    if(message !== 'LABEL'){
-      if (
-        zone.get(accountId) === call &&
-        label.get(accountId) === call &&
-        confirmation.get(accountId) === call &&
-        condition.get(accountId) === call
-      ) {
-        const ws = wsConnections.find(conn => conn.accountId === accountId);
-        if (ws) {
-          placeTrade(ws, accountId, {
-            symbol: 'frxXAUUSD',
-            call
-          });
-        }
+    if (
+      zone.get(accountId) === call &&
+      label.get(accountId) === call &&
+      confirmation.get(accountId) === call &&
+      condition.get(accountId) === call
+    ) {
+      const ws = wsConnections.find(conn => conn.accountId === accountId);
+      if (ws) {
+        placeTrade(ws, accountId, {
+          symbol: 'frxXAUUSD',
+          call
+        });
       }
     }
   });
