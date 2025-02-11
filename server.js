@@ -325,9 +325,6 @@ const connectWebSocket = (apiToken) => {
             }
           }
           break;
-
-        default:
-          console.log(`[${apiToken}] Unknown message type:`, response);
       }
     } catch (error) {
       console.error(`[${apiToken}] Message processing failed:`, error);
