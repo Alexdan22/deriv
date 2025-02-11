@@ -258,84 +258,91 @@ const createWebSocketConnections = () => {
   wsConnections.forEach(ws => ws?.close());
   
   wsConnections = API_TOKENS.map(apiToken => {
-    const ws = new WebSocket(WEBSOCKET_URL);
-    ws.accountId = apiToken;
+    return connectWebSocket(apiToken);
+  });
+};
 
-    ws.on('open', () => {
-      console.log(`[${apiToken}] Connected`);
-      sendToWebSocket(ws, { authorize: apiToken });
-      setInterval(() => {
+const connectWebSocket = (apiToken) => {
+  const ws = new WebSocket(WEBSOCKET_URL);
+  ws.accountId = apiToken;
+
+  let pingInterval;
+
+  ws.on('open', () => {
+    console.log(`[${apiToken}] Connected`);
+    sendToWebSocket(ws, { authorize: apiToken });
+
+    if (pingInterval) clearInterval(pingInterval);
+    pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
         sendToWebSocket(ws, { ping: 1 });
         sendToWebSocket(ws, { proposal_open_contract: 1, subscribe: 1 });
-      }, PING_INTERVAL);
-    });
+      }
+    }, PING_INTERVAL);
+  });
 
-    ws.on("message", (data) => {
-      try {
-        const response = JSON.parse(data);
+  ws.on("message", (data) => {
+    try {
+      const response = JSON.parse(data);
+      if (!response.msg_type) return;
 
-        if (response.msg_type === "authorize") {
+      switch (response.msg_type) {
+        case "authorize":
           try {
-
-            const response = JSON.parse(data);
             setProfit(ws, response);
-            return; 
-    
           } catch (error) {
-            console.error("Authorization failed:", error);
+            console.error(`[${apiToken}] Authorization failed:`, error);
           }
-        }
-    
-        if (response.msg_type === "buy") {
+          break;
+
+        case "buy":
           if (!response.buy || !response.buy.contract_id) {
-            console.log('Invalid buy response:', response);
+            console.warn(`[${apiToken}] Invalid buy response:`, response);
             return;
-        }
+          }
           const customTradeId = response.passthrough?.custom_trade_id;
-          
           if (customTradeId) {
             const [accountId, tradeId] = customTradeId.split("_");
-            if (accountTrades.has(accountId)) {
-              const tradesForAccount = accountTrades.get(accountId);
-              if (tradesForAccount.has(tradeId)) {
-                tradesForAccount.get(tradeId).contract_id = response.buy.contract_id;
-              }
+            const tradesForAccount = accountTrades.get(accountId);
+            if (tradesForAccount?.has(tradeId)) {
+              tradesForAccount.get(tradeId).contract_id = response.buy.contract_id;
             }
           }
-        }
-    
-        if (response.msg_type === "proposal_open_contract") {
+          break;
+
+        case "proposal_open_contract":
           const contract = response.proposal_open_contract;
-          
-          if (!contract || !contract.contract_id) return;
-          
-          if(contract.status !== 'open'){
+          if (!contract?.contract_id) return;
+
+          if (contract.status !== "open") {
             for (const [accountId, trades] of accountTrades) {
               for (const [tradeId, trade] of trades) {
                 if (trade.contract_id === contract.contract_id) {
                   handleTradeResult(contract, accountId, tradeId);
-                    return;
+                  return;
                 }
               }
             }
           }
-        }
-    
-      } catch (error) {
-        console.error("Message processing failed:", error);
+          break;
+
+        default:
+          console.log(`[${apiToken}] Unknown message type:`, response);
       }
-    });
-
-    ws.on('close', () => {
-      console.log(`[${apiToken}] Connection closed, reconnecting...`);
-      setTimeout(createWebSocketConnections, 10000);
-    });
-
-    ws.on('error', error => 
-      console.error(`[${apiToken}] WebSocket error:`, error));
-
-    return ws;
+    } catch (error) {
+      console.error(`[${apiToken}] Message processing failed:`, error);
+    }
   });
+
+  ws.on('close', () => {
+    console.log(`[${apiToken}] Connection closed, cleaning up...`);
+    wsConnections = wsConnections.filter(conn => conn.accountId !== apiToken);
+    setTimeout(() => connectWebSocket(apiToken), 10000);
+  });
+
+  ws.on('error', (error) => console.error(`[${apiToken}] WebSocket error:`, error));
+
+  return ws;
 };
 
 const processTradeSignal = (message, call) => {
@@ -405,7 +412,7 @@ const sendTelegramMessage = async (message, call) => {
       confirmationTele === call &&
       conditionTele === call
     ) {
-      const messageType = call === 'call' ? 'BUY 🟢🟢🟢' :  'SELL 🔴🔴🔴'
+      const messageType = call === 'call' ? 'BUY 🟢🟢🟢' :  'SELL 🔴🔴🔴';
       const alertMessage = 
       `Hello Traders
       
