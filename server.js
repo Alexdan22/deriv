@@ -54,6 +54,8 @@ const condition = new Map();
 
 let zoneTele = null;
 let confirmationTele = null;
+let labelTele = null;
+let conditionTele = null;
 
 const PING_INTERVAL = 30000;
 let wsConnections = [];
@@ -134,7 +136,6 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   await Threshold.updateOne({uniqueDate}, {$set:{pnl:newValue}});
 
 
-  console.log(`Trade results proccessed for Account ID - ${accountId}`);
   
   const tradesForAccount = accountTrades.get(accountId);
   if (!tradesForAccount) return;
@@ -298,7 +299,6 @@ const createWebSocketConnections = () => {
               const tradesForAccount = accountTrades.get(accountId);
               if (tradesForAccount.has(tradeId)) {
                 tradesForAccount.get(tradeId).contract_id = response.buy.contract_id;
-                console.log(tradesForAccount.get(tradeId));
               }
             }
           }
@@ -382,43 +382,41 @@ const sendTelegramMessage = async (message, call) => {
   switch(message) {
     case 'ZONE': 
       zoneTele = call;
-      confirmationTele = null;
       break;
+    case 'LABEL': 
+      labelTele = call;
+      break;  
     case 'CONFIRMATION': 
-      confirmationTele = call 
+      confirmationTele = call; 
+      break;  
+    case 'CONDITION': 
+      conditionTele = call; 
       break;
   }
+  
+  
 
 
   
   try {
-    if(zoneTele === 'call' && confirmationTele === 'call'){
-      confirmationTele = null
+    if (
+      zoneTele === call &&
+      labelTele === call &&
+      confirmationTele === call &&
+      conditionTele === call
+    ) {
+      const messageType = call === 'call' ? 'BUY 🟢🟢🟢' :  'SELL 🔴🔴🔴'
       const alertMessage = 
       `Hello Traders
       
 XAUUSD (Gold  Spot)
       
-BUY 🟢🟢🟢`
+${messageType}`
 
       // Send the message to Telegram
       await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         chat_id: CHANNEL_CHAT_ID,
         text: alertMessage,
-      });
-
-    } else if (zoneTele === 'put' && confirmationTele === 'put') {
-      confirmationTele = null
-      const alertMessage = 
-      `Hello Traders
-      
-XAUUSD (Gold  Spot)
-      
-SELL 🔴🔴🔴`
-      // Send the message to Telegram
-      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          chat_id: CHANNEL_CHAT_ID,
-          text: alertMessage,
       });
     }
     
