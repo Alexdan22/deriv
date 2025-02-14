@@ -557,6 +557,10 @@ const processTradeSignal = (symbol, message, call) => {
 
 app.post('/webhook', async (req, res) => {
   const { symbol, call, message } = req.body;
+  console.log(req.body);
+  
+  console.log(`Received webhook: ${symbol} ${call} ${message}`);
+  
   if (!symbol || !call || !message) {
     return res.status(400).send('Invalid payload');
   }
