@@ -480,22 +480,23 @@ const processTradeSignal = async(symbol, message, call) => {
 
   const variables = await Variable.find({}); // Retrieve all saved variables
 
-    if (variables.length > 0) {
-      variables.forEach(variable => {
-        if(variable.symbol === symbol){
-          switch (message) {
-            case 'ZONE': 
-              variable.variables.zone = assetConditions.zone;
-              break; 
-            case 'CONDITION': 
-              variable.variables.condition = assetConditions.condition;
-              break;
-          }
-        
+  if (variables.length > 0) {
+    for (const variable of variables) {
+      if (variable.symbol === symbol) {
+        switch (message) {
+          case 'ZONE': 
+            variable.variables.zone = assetConditions.zone;
+            break; 
+          case 'CONDITION': 
+            variable.variables.condition = assetConditions.condition;
+            break;
         }
-      });
-      await variables.save();
+
+        await variable.save(); // Save each updated document
+      }
     }
+  }
+
 
   let shouldSendAlert = false;
 
