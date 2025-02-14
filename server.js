@@ -551,7 +551,6 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send('Invalid payload');
   }
   
-  sendTelegramMessage(symbol, message, call)
   processTradeSignal(symbol, message, call);
     
   res.send('Signal processed');
