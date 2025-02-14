@@ -113,6 +113,7 @@ const placeTrade = async (ws, accountId, trade) => {
   const tradeId = uuidv4();
   const customTradeId = `${accountId}_${tradeId}`;
   const user = await Threshold.findOne({uniqueDate});
+  console.log(`[${accountId}] Placing trade for ${trade.symbol} ${trade.call}`);
   
 
   if(user){
@@ -305,22 +306,17 @@ const retrieveVariable = async () => {
         console.log(`✅ Restoring variables for ${symbol}: Zone: ${savedZone}, Condition: ${savedCondition}`);
         
 
-        wsConnections.forEach(ws => {
-          const accountId = ws.accountId;
+        if (!tradeConditions.has(symbol)) {
+          tradeConditions.set(symbol, new Map());
 
-          if (!tradeConditions.has(symbol)) {
-            tradeConditions.set(symbol, new Map());
-          }
+          tradeConditions.set(symbol, {
+            zone: savedZone,
+            label: null,
+            confirmation: null,
+            condition: savedCondition
+          });
+        }
 
-          if (!tradeConditions.get(symbol)[accountId]) {
-            tradeConditions.get(symbol)[accountId] = { 
-              zone: savedZone, 
-              condition: savedCondition, 
-              label: null, 
-              confirmation: null 
-            };
-          }
-        });
       });
 
       console.log("✅ Variables restored from DB.");
@@ -452,7 +448,7 @@ const sendTelegramAlert = async (symbol, call) => {
   });
 };
 
-const processTradeSignal = (symbol, message, call) => {
+const processTradeSignal = async(symbol, message, call) => {
   console.log(`Processing trade signal for ${symbol}: ${message} ${call}`);
 
   if (!tradeConditions.has(symbol)) {
@@ -460,8 +456,7 @@ const processTradeSignal = (symbol, message, call) => {
       zone: null,
       label: null,
       confirmation: null,
-      condition: null,
-      alerted: false, // Prevent duplicate Telegram alerts
+      condition: null
     });
   }
 
@@ -474,14 +469,33 @@ const processTradeSignal = (symbol, message, call) => {
       break;
     case 'LABEL': 
       assetConditions.label = call;
-      break;  
+      break;
     case 'CONFIRMATION': 
       assetConditions.confirmation = call;
-      break;  
+      break;
     case 'CONDITION': 
       assetConditions.condition = call;
       break;
   }
+
+  const variables = await Variable.find({}); // Retrieve all saved variables
+
+    if (variables.length > 0) {
+      variables.forEach(variable => {
+        if(variable.symbol === symbol){
+          switch (message) {
+            case 'ZONE': 
+              variable.variables.zone = assetConditions.zone;
+              break; 
+            case 'CONDITION': 
+              variable.variables.condition = assetConditions.condition;
+              break;
+          }
+        
+        }
+      });
+      await variables.save();
+    }
 
   let shouldSendAlert = false;
 
@@ -489,8 +503,7 @@ const processTradeSignal = (symbol, message, call) => {
     if (
       assetConditions.zone === call &&
       assetConditions.condition === call &&
-      assetConditions.label === call &&
-      !assetConditions.alerted
+      assetConditions.label === call
     ) {
       shouldSendAlert = true;
     }
@@ -498,8 +511,7 @@ const processTradeSignal = (symbol, message, call) => {
     if (
       assetConditions.zone === call &&
       assetConditions.condition === call &&
-      assetConditions.confirmation === call &&
-      !assetConditions.alerted
+      assetConditions.confirmation === call
     ) {
       shouldSendAlert = true;
     }
@@ -512,46 +524,76 @@ const processTradeSignal = (symbol, message, call) => {
 
   // Process trades for all accounts
   API_TOKENS.forEach(accountId => {
-    if (!tradeConditions.get(symbol)[accountId]) {
-      console.log(`Initializing trade conditions for ${accountId}`);
-      tradeConditions.get(symbol)[accountId] = { zone: null, label: null, confirmation: null, condition: null };
-    }
 
-    const accountConditions = tradeConditions.get(symbol)[accountId];
+    // if (!tradeConditions.get(symbol)[accountId]) {
+    //   console.log(`Initializing trade conditions for ${accountId}`);
+    //   tradeConditions.get(symbol)[accountId] = { zone: null, label: null, confirmation: null, condition: null };
+    // }
+
+    // const accountConditions = tradeConditions.get(symbol)[accountId];
     console.log(`[${accountId}] Processing trade signal for ${symbol}: ${message} ${call}`);
+
+    if (message === 'LABEL') {
+      if (
+        assetConditions.zone === call &&
+        assetConditions.condition === call &&
+        assetConditions.label === call
+      ) {
+        const ws = wsConnections.find(conn => conn.accountId === accountId);
+        if (ws) {
+          placeTrade(ws, accountId, {
+            symbol: `frx${symbol}`,
+            call
+          });
+        }
+      }
+    } else if (message === 'CONFIRMATION') {
+      if (
+        assetConditions.zone === call &&
+        assetConditions.condition === call &&
+        assetConditions.confirmation === call
+      ) {
+        const ws = wsConnections.find(conn => conn.accountId === accountId);
+        if (ws) {
+          placeTrade(ws, accountId, {
+            symbol: `frx${symbol}`,
+            call
+          });
+        }
+      }
+    }
     
 
-    if (
-      message === 'LABEL' &&
-      accountConditions.zone === call &&
-      accountConditions.condition === call &&
-      accountConditions.label === call
-    ) {
-      const ws = wsConnections.find(conn => conn.accountId === accountId);
-      if (ws) {
-        placeTrade(ws, accountId, {
-          symbol: `frx${symbol}`,
-          call
-        });
-      }
-    } else if (
-      message === 'CONFIRMATION' &&
-      accountConditions.zone === call &&
-      accountConditions.condition === call &&
-      accountConditions.confirmation === call
-    ) {
-      const ws = wsConnections.find(conn => conn.accountId === accountId);
-      if (ws) {
-        placeTrade(ws, accountId, {
-          symbol: `frx${symbol}`,
-          call
-        });
-      }
-    }
+      // if (
+      //   message === 'LABEL' &&
+      //   accountConditions.zone === call &&
+      //   accountConditions.condition === call &&
+      //   accountConditions.label === call
+      // ) {
+      //   const ws = wsConnections.find(conn => conn.accountId === accountId);
+      //   if (ws) {
+      //     placeTrade(ws, accountId, {
+      //       symbol: `frx${symbol}`,
+      //       call
+      //     });
+      //   }
+      // } else if (
+      //   message === 'CONFIRMATION' &&
+      //   accountConditions.zone === call &&
+      //   accountConditions.condition === call &&
+      //   accountConditions.confirmation === call
+      // ) {
+      //   const ws = wsConnections.find(conn => conn.accountId === accountId);
+      //   if (ws) {
+      //     placeTrade(ws, accountId, {
+      //       symbol: `frx${symbol}`,
+      //       call
+      //     });
+      //   }
+      // }
   });
-
-
 };
+
 
 
 
