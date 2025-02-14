@@ -84,15 +84,6 @@ async function getAllApiTokens() {
 
 const accountTrades = new Map();
 const tradeConditions = new Map();
-const zone = new Map();
-const label = new Map();
-const confirmation = new Map();
-const condition = new Map();
-
-let zoneTele = null;
-let confirmationTele = null;
-let labelTele = null;
-let conditionTele = null;
 
 const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 const PING_INTERVAL = 30000;
@@ -113,7 +104,6 @@ const placeTrade = async (ws, accountId, trade) => {
   const tradeId = uuidv4();
   const customTradeId = `${accountId}_${tradeId}`;
   const user = await Threshold.findOne({uniqueDate});
-  console.log(`[${accountId}] Placing trade for ${trade.symbol} ${trade.call}`);
   
 
   if(user){
@@ -449,7 +439,6 @@ const sendTelegramAlert = async (symbol, call) => {
 };
 
 const processTradeSignal = async(symbol, message, call) => {
-  console.log(`Processing trade signal for ${symbol}: ${message} ${call}`);
 
   if (!tradeConditions.has(symbol)) {
     tradeConditions.set(symbol, {
@@ -532,7 +521,6 @@ const processTradeSignal = async(symbol, message, call) => {
     // }
 
     // const accountConditions = tradeConditions.get(symbol)[accountId];
-    console.log(`[${accountId}] Processing trade signal for ${symbol}: ${message} ${call}`);
 
     if (message === 'LABEL') {
       if (
