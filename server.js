@@ -39,8 +39,11 @@ const profitSchema = new mongoose.Schema({
   uniqueDate: String
 });
 const variableSchema = new mongoose.Schema({
-  zone: String,
-  condition: String
+  variables:{
+    zone: String,
+    condition: String
+  },
+  symbol: String
 });
 const apiTokenSchema = new mongoose.Schema({
   apiToken: String,
@@ -80,6 +83,7 @@ async function getAllApiTokens() {
 })();
 
 const accountTrades = new Map();
+const tradeConditions = new Map();
 const zone = new Map();
 const label = new Map();
 const confirmation = new Map();
@@ -293,29 +297,46 @@ const setProfit = async (ws, response) => {
 
 const retrieveVariable = async () => {
   try {
-    const variable = await Variable.findOne({});
-    
-    if (variable) {
-      const { zone: savedZone, condition: savedCondition } = variable;
+    const variables = await Variable.find({}); // Retrieve all saved variables
 
-      wsConnections.forEach(ws => {
-        const accountId = ws.accountId; // Get the accountId from WebSocket connection
+    if (variables.length > 0) {
+      variables.forEach(variable => {
+        const { symbol, variables: { zone: savedZone, condition: savedCondition } } = variable;
 
-        if (!zone.has(accountId)) zone.set(accountId, savedZone);
-        if (!label.has(accountId)) label.set(accountId, savedCondition);
-        if (!confirmation.has(accountId)) confirmation.set(accountId, null);
-        if (!condition.has(accountId)) condition.set(accountId, null);
+        wsConnections.forEach(ws => {
+          const accountId = ws.accountId;
+
+          if (!tradeConditions.get(symbol)[accountId]) {
+            tradeConditions.get(symbol)[accountId] = { 
+              zone: savedZone, 
+              condition: savedCondition, 
+              label: null, 
+              confirmation: null 
+            };
+          }
+        });
       });
 
       console.log("✅ Variables restored from DB.");
     } else {
       console.log("⚠️ No saved variables found. Initializing with default values.");
 
-      const newVariable = new Variable({
-        zone: "null",
-        condition: "null"
+      const newVariable1 = new Variable({
+        symbol: "XAUUSD",
+        variables: {
+          zone: "null",
+          condition: "null"
+        }
       });
-      await newVariable.save();
+      await newVariable1.save();
+      const newVariable2 = new Variable({
+        symbol: "EURUSD",
+        variables: {
+          zone: "null",
+          condition: "null"
+        }
+      });
+      await newVariable2.save();
     }
   } catch (error) {
     console.error("❌ Error retrieving variables:", error);
@@ -410,131 +431,119 @@ const connectWebSocket = (apiToken) => {
   return ws;
 };
 
-const processTradeSignal = (symbol, message, call) => {
-  API_TOKENS.forEach(accountId => {
-    if (!zone.has(accountId)) zone.set(accountId, null);
-    if (!label.has(accountId)) label.set(accountId, null);
-    if (!confirmation.has(accountId)) confirmation.set(accountId, null);
-    if (!condition.has(accountId)) condition.set(accountId, null);
+const sendTelegramAlert = async (symbol, call) => {
+  const messageType = call === 'call' ? 'BUY 🟢🟢🟢' : 'SELL 🔴🔴🔴';
+  const alertMessage = 
+  `Hello Traders,
 
-    switch(message) {
-      case 'ZONE': 
-        zone.set(accountId, call);
-        break;
-      case 'LABEL': 
-        label.set(accountId, call);
-        break;  
-      case 'CONFIRMATION': 
-        confirmation.set(accountId, call); 
-        break;  
-      case 'CONDITION': 
-        condition.set(accountId, call); 
-        break;
-    }
+  ${symbol}
 
-    if(message === 'LABEL'){
-      if (
-            zone.get(accountId) === call &&
-            condition.get(accountId) === call &&
-            label.get(accountId) === call
-          ) {
-            const ws = wsConnections.find(conn => conn.accountId === accountId);
-            if (ws) {
-              placeTrade(ws, accountId, {
-                symbol: `frx${symbol}`,
-                call
-              });
-            }
-          }
-     }else if(message === 'CONFIRMATION'){
-      if (
-            zone.get(accountId) === call &&
-            condition.get(accountId) === call &&
-            confirmation.get(accountId) === call 
-          ) {
-            const ws = wsConnections.find(conn => conn.accountId === accountId);
-            if (ws) {
-              placeTrade(ws, accountId, {
-                symbol: `frx${symbol}`,
-                call
-              });
-            }
-          }
-     }
-    
-    
+  ${messageType}`;
+
+  await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    chat_id: CHANNEL_CHAT_ID,
+    text: alertMessage,
   });
 };
 
-const sendTelegramMessage = async (symbol, message, call) => {
-  
-  switch(message) {
+const processTradeSignal = (symbol, message, call) => {
+
+  if (!tradeConditions.has(symbol)) {
+    tradeConditions.set(symbol, {
+      zone: null,
+      label: null,
+      confirmation: null,
+      condition: null,
+      alerted: false, // Prevent duplicate Telegram alerts
+    });
+  }
+
+  const assetConditions = tradeConditions.get(symbol);
+
+  // Update the asset-wide condition
+  switch (message) {
     case 'ZONE': 
-      zoneTele = call;
+      assetConditions.zone = call;
       break;
     case 'LABEL': 
-      labelTele = call;
+      assetConditions.label = call;
       break;  
     case 'CONFIRMATION': 
-      confirmationTele = call; 
+      assetConditions.confirmation = call;
       break;  
     case 'CONDITION': 
-      conditionTele = call; 
+      assetConditions.condition = call;
       break;
   }
-  
-  
 
+  let shouldSendAlert = false;
 
-  
-  try {
-    if(message === 'LABEL'){
-      if (
-        zoneTele === call &&
-        conditionTele === call
-      ) {
-        const messageType = call === 'call' ? 'BUY 🟢🟢🟢' :  'SELL 🔴🔴🔴';
-        const alertMessage = 
-        `Hello Traders
-        
-  ${symbol}
-        
-  ${messageType}`
-  
-        // Send the message to Telegram
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          chat_id: CHANNEL_CHAT_ID,
-          text: alertMessage,
+  if (message === 'LABEL') {
+    if (
+      assetConditions.zone === call &&
+      assetConditions.condition === call &&
+      assetConditions.label === call &&
+      !assetConditions.alerted
+    ) {
+      shouldSendAlert = true;
+    }
+  } else if (message === 'CONFIRMATION') {
+    if (
+      assetConditions.zone === call &&
+      assetConditions.condition === call &&
+      assetConditions.confirmation === call &&
+      !assetConditions.alerted
+    ) {
+      shouldSendAlert = true;
+    }
+  }
+
+  if (shouldSendAlert) {
+    sendTelegramAlert(symbol, call);
+    assetConditions.alerted = true; // Mark as alerted to avoid duplicate messages
+  }
+
+  // Process trades for all accounts
+  API_TOKENS.forEach(accountId => {
+    if (!tradeConditions.get(symbol)[accountId]) {
+      tradeConditions.get(symbol)[accountId] = { zone: null, label: null, confirmation: null, condition: null };
+    }
+
+    const accountConditions = tradeConditions.get(symbol)[accountId];
+
+    if (
+      message === 'LABEL' &&
+      accountConditions.zone === call &&
+      accountConditions.condition === call &&
+      accountConditions.label === call
+    ) {
+      const ws = wsConnections.find(conn => conn.accountId === accountId);
+      if (ws) {
+        placeTrade(ws, accountId, {
+          symbol: `frx${symbol}`,
+          call
         });
       }
-    }else if(message === 'CONFIRMATION'){
-      if (
-        zoneTele === call &&
-        conditionTele === call
-      ) {
-        const messageType = call === 'call' ? 'BUY 🟢🟢🟢' :  'SELL 🔴🔴🔴';
-        const alertMessage = 
-        `Hello Traders
-        
-  ${symbol}
-        
-  ${messageType}`
-  
-        // Send the message to Telegram
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          chat_id: CHANNEL_CHAT_ID,
-          text: alertMessage,
+    } else if (
+      message === 'CONFIRMATION' &&
+      accountConditions.zone === call &&
+      accountConditions.condition === call &&
+      accountConditions.confirmation === call
+    ) {
+      const ws = wsConnections.find(conn => conn.accountId === accountId);
+      if (ws) {
+        placeTrade(ws, accountId, {
+          symbol: `frx${symbol}`,
+          call
         });
       }
     }
-    
-    
+  });
 
-  } catch (error) {
 
-          console.error('Error fetching chat ID:' + error);
-  }
-}
+};
+
+
 
 app.post('/webhook', async (req, res) => {
   const { symbol, call, message } = req.body;
