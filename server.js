@@ -306,6 +306,10 @@ const retrieveVariable = async () => {
         wsConnections.forEach(ws => {
           const accountId = ws.accountId;
 
+          if (!tradeConditions.has(symbol)) {
+            tradeConditions.set(symbol, new Map());
+          }
+
           if (!tradeConditions.get(symbol)[accountId]) {
             tradeConditions.get(symbol)[accountId] = { 
               zone: savedZone, 
