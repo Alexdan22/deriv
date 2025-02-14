@@ -302,6 +302,8 @@ const retrieveVariable = async () => {
     if (variables.length > 0) {
       variables.forEach(variable => {
         const { symbol, variables: { zone: savedZone, condition: savedCondition } } = variable;
+        console.log(`✅ Restoring variables for ${symbol}: Zone: ${savedZone}, Condition: ${savedCondition}`);
+        
 
         wsConnections.forEach(ws => {
           const accountId = ws.accountId;
@@ -451,6 +453,7 @@ const sendTelegramAlert = async (symbol, call) => {
 };
 
 const processTradeSignal = (symbol, message, call) => {
+  console.log(`Processing trade signal for ${symbol}: ${message} ${call}`);
 
   if (!tradeConditions.has(symbol)) {
     tradeConditions.set(symbol, {
@@ -510,10 +513,13 @@ const processTradeSignal = (symbol, message, call) => {
   // Process trades for all accounts
   API_TOKENS.forEach(accountId => {
     if (!tradeConditions.get(symbol)[accountId]) {
+      console.log(`Initializing trade conditions for ${accountId}`);
       tradeConditions.get(symbol)[accountId] = { zone: null, label: null, confirmation: null, condition: null };
     }
 
     const accountConditions = tradeConditions.get(symbol)[accountId];
+    console.log(`[${accountId}] Processing trade signal for ${symbol}: ${message} ${call}`);
+    
 
     if (
       message === 'LABEL' &&
