@@ -7,8 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const { DateTime } = require('luxon');
 require('dotenv').config();
 
-const API_TOKENS = process.env.API_TOKENS.split(',');
-const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
+const API_TOKENS = process.env.API_TOKENS ? process.env.API_TOKENS.split(',') : [];
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_CHAT_ID = process.env.CHANNEL_CHAT_ID;
 
@@ -16,8 +15,8 @@ const app = express();
 app.use(bodyParser.json());
 
 mongoose.set('strictQuery', false);
-// mongoose.connect("mongodb://localhost:27017/derivTradeDB");
-mongoose.connect("mongodb+srv://alex-dan:Admin-12345@cluster0.wirm8.mongodb.net/derivTradeDB");
+// mongoose.connect("mongodb://localhost:27017/mysteryDB");
+mongoose.connect("mongodb+srv://alex-dan:Admin-12345@cluster0.wirm8.mongodb.net/mysteryDB");
 
 const profitSchema = new mongoose.Schema({
   email: String,
@@ -39,12 +38,46 @@ const profitSchema = new mongoose.Schema({
   date: String,
   uniqueDate: String
 });
+const variableSchema = new mongoose.Schema({
+  zone: String,
+  condition: String
+});
+const apiTokenSchema = new mongoose.Schema({
+  apiToken: String,
+  email: String,
+  fullname: String,
+  scope: [String],
+  user_id: Number,
+  readyForTrade: Boolean,
+});
+
+const Api = new mongoose.model("Api", apiTokenSchema);
 
 const Threshold = new mongoose.model('Threshold', profitSchema);
+
+const Variable = new mongoose.model('Variable', variableSchema);
 
 const timeZone = 'Asia/Kolkata';
 const currentTimeInTimeZone = DateTime.now().setZone(timeZone);
 
+async function getAllApiTokens() {
+  try {
+    
+    const dbTokens = await Api.find({ readyForTrade: true }, "apiToken"); 
+    
+    const dbTokenArray = dbTokens.map((doc) => doc.apiToken); 
+
+    return [...API_TOKENS, ...dbTokenArray]; // Merge .env tokens and DB tokens
+  } catch (error) {
+    console.error("Error fetching API tokens from DB:", error);
+    return API_TOKENS;
+  }
+}
+
+(async () => {
+  const allTokens = await getAllApiTokens();
+  console.log("✅ Final API Tokens:", allTokens);
+})();
 
 const accountTrades = new Map();
 const zone = new Map();
@@ -57,6 +90,7 @@ let confirmationTele = null;
 let labelTele = null;
 let conditionTele = null;
 
+const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 const PING_INTERVAL = 30000;
 let wsConnections = [];
 
@@ -86,7 +120,7 @@ const placeTrade = async (ws, accountId, trade) => {
         }
         const tradesForAccount = accountTrades.get(accountId);
         tradesForAccount.set(tradeId, {
-          symbol: "frxXAUUSD",
+          symbol: trade.symbol,
           call: trade.call,
           stake: user.stake,
           martingaleStep: trade.martingaleStep || 0,
@@ -95,22 +129,25 @@ const placeTrade = async (ws, accountId, trade) => {
           parentTradeId: trade.parentTradeId || null
         });
 
-        sendToWebSocket(ws, {
-          buy: "1",
-          price: user.stake,
-          parameters: {
-            amount: user.stake,
-            basis: "stake",
-            contract_type: trade.call === "call" ? "CALL" : "PUT",
-            currency: "USD",
-            duration: 6,
-            duration_unit: "m",
-            symbol: "frxXAUUSD",
-          },
-          passthrough: { 
-            custom_trade_id: customTradeId 
-          }
-        });
+        if (ws.readyState === WebSocket.OPEN) {
+          sendToWebSocket(ws, {
+            buy: "1",
+            price: user.stake,
+            parameters: {
+              amount: user.stake,
+              basis: "stake",
+              contract_type: trade.call === "call" ? "CALL" : "PUT",
+              currency: "USD",
+              duration: 5,
+              duration_unit: "m",
+              symbol: trade.symbol,
+            },
+            passthrough: { custom_trade_id: customTradeId },
+          });
+        } else {
+          console.error(`[${accountId}] WebSocket is not open. Cannot place trade.`);
+        }
+        
     }else{
       //Profit threshold reached, skipping trades
       console.log(`[${accountId}] Profit threshold reached for the day, skipping trade`);
@@ -132,8 +169,8 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   const uniqueDate = `${date}-${month}-${year}_${accountId}`;
   const user = await Threshold.findOne({uniqueDate});
 
-  const newValue = user.pnl + contract.profit;
-  await Threshold.updateOne({uniqueDate}, {$set:{pnl:newValue}});
+  const newValue = (user.pnl || 0) + (contract.profit || 0);
+  await Threshold.updateOne({ uniqueDate }, { $set: { pnl: newValue } });
 
 
   
@@ -252,14 +289,45 @@ const setProfit = async (ws, response) => {
     }
     
   }
-}
+};
 
-const createWebSocketConnections = () => {
+const retrieveVariable = async () => {
+  try {
+    const variable = await Variable.findOne({});
+    
+    if (variable) {
+      const { zone: savedZone, condition: savedCondition } = variable;
+
+      wsConnections.forEach(ws => {
+        const accountId = ws.accountId; // Get the accountId from WebSocket connection
+
+        if (!zone.has(accountId)) zone.set(accountId, savedZone);
+        if (!label.has(accountId)) label.set(accountId, savedCondition);
+        if (!confirmation.has(accountId)) confirmation.set(accountId, null);
+        if (!condition.has(accountId)) condition.set(accountId, null);
+      });
+
+      console.log("✅ Variables restored from DB.");
+    } else {
+      console.log("⚠️ No saved variables found. Initializing with default values.");
+
+      const newVariable = new Variable({
+        zone: "null",
+        condition: "null"
+      });
+      await newVariable.save();
+    }
+  } catch (error) {
+    console.error("❌ Error retrieving variables:", error);
+  }
+};
+
+const createWebSocketConnections = async () => {
   wsConnections.forEach(ws => ws?.close());
-  
-  wsConnections = API_TOKENS.map(apiToken => {
-    return connectWebSocket(apiToken);
-  });
+
+  wsConnections = API_TOKENS.map(apiToken => connectWebSocket(apiToken));
+
+  await retrieveVariable();
 };
 
 const connectWebSocket = (apiToken) => {
@@ -342,7 +410,7 @@ const connectWebSocket = (apiToken) => {
   return ws;
 };
 
-const processTradeSignal = (message, call) => {
+const processTradeSignal = (symbol, message, call) => {
   API_TOKENS.forEach(accountId => {
     if (!zone.has(accountId)) zone.set(accountId, null);
     if (!label.has(accountId)) label.set(accountId, null);
@@ -363,25 +431,42 @@ const processTradeSignal = (message, call) => {
         condition.set(accountId, call); 
         break;
     }
+
+    if(message === 'LABEL'){
+      if (
+            zone.get(accountId) === call &&
+            condition.get(accountId) === call &&
+            label.get(accountId) === call
+          ) {
+            const ws = wsConnections.find(conn => conn.accountId === accountId);
+            if (ws) {
+              placeTrade(ws, accountId, {
+                symbol: `frx${symbol}`,
+                call
+              });
+            }
+          }
+     }else if(message === 'CONFIRMATION'){
+      if (
+            zone.get(accountId) === call &&
+            condition.get(accountId) === call &&
+            confirmation.get(accountId) === call 
+          ) {
+            const ws = wsConnections.find(conn => conn.accountId === accountId);
+            if (ws) {
+              placeTrade(ws, accountId, {
+                symbol: `frx${symbol}`,
+                call
+              });
+            }
+          }
+     }
     
-    if (
-      zone.get(accountId) === call &&
-      label.get(accountId) === call &&
-      confirmation.get(accountId) === call &&
-      condition.get(accountId) === call
-    ) {
-      const ws = wsConnections.find(conn => conn.accountId === accountId);
-      if (ws) {
-        placeTrade(ws, accountId, {
-          symbol: 'frxXAUUSD',
-          call
-        });
-      }
-    }
+    
   });
 };
 
-const sendTelegramMessage = async (message, call) => {
+const sendTelegramMessage = async (symbol, message, call) => {
   
   switch(message) {
     case 'ZONE': 
@@ -403,26 +488,46 @@ const sendTelegramMessage = async (message, call) => {
 
   
   try {
-    if (
-      zoneTele === call &&
-      labelTele === call &&
-      confirmationTele === call &&
-      conditionTele === call
-    ) {
-      const messageType = call === 'call' ? 'BUY 🟢🟢🟢' :  'SELL 🔴🔴🔴';
-      const alertMessage = 
-      `Hello Traders
-      
-XAUUSD (Gold  Spot)
-      
-${messageType}`
-
-      // Send the message to Telegram
-      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        chat_id: CHANNEL_CHAT_ID,
-        text: alertMessage,
-      });
+    if(message === 'LABEL'){
+      if (
+        zoneTele === call &&
+        conditionTele === call
+      ) {
+        const messageType = call === 'call' ? 'BUY 🟢🟢🟢' :  'SELL 🔴🔴🔴';
+        const alertMessage = 
+        `Hello Traders
+        
+  ${symbol}
+        
+  ${messageType}`
+  
+        // Send the message to Telegram
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          chat_id: CHANNEL_CHAT_ID,
+          text: alertMessage,
+        });
+      }
+    }else if(message === 'CONFIRMATION'){
+      if (
+        zoneTele === call &&
+        conditionTele === call
+      ) {
+        const messageType = call === 'call' ? 'BUY 🟢🟢🟢' :  'SELL 🔴🔴🔴';
+        const alertMessage = 
+        `Hello Traders
+        
+  ${symbol}
+        
+  ${messageType}`
+  
+        // Send the message to Telegram
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          chat_id: CHANNEL_CHAT_ID,
+          text: alertMessage,
+        });
+      }
     }
+    
     
 
   } catch (error) {
@@ -437,8 +542,8 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send('Invalid payload');
   }
   
-  sendTelegramMessage(message, call)
-  processTradeSignal(message, call);
+  sendTelegramMessage(symbol, message, call)
+  processTradeSignal(symbol, message, call);
     
   res.send('Signal processed');
 });
