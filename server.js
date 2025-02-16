@@ -85,7 +85,7 @@ async function getAllApiTokens() {
 const accountTrades = new Map();
 const tradeConditions = new Map();
 
-const WEBSOCKET_URL = 'wss://wws.binaryws.com/websockets/v3?app_id=1089';
+const WEBSOCKET_URL = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
 const PING_INTERVAL = 30000;
 let wsConnections = [];
 
