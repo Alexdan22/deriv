@@ -372,6 +372,8 @@ const connectWebSocket = (apiToken) => {
       switch (response.msg_type) {
         case "authorize":
           try {
+            console.log("🔍 Full API Response:", JSON.stringify(response, null, 2));
+
             setProfit(ws, response);
           } catch (error) {
             console.error(`[${apiToken}] Authorization failed:`, error);
