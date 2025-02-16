@@ -216,14 +216,11 @@ const setProfit = async (ws, response) => {
   let date = currentTimeInTimeZone.day;
 
   const apiToken = ws.accountId;
+  console.log(response.authorize);
   const {email, balance, fullname} = response.authorize;
   const uniqueDate = `${date}-${month}-${year}_${apiToken}`;
   const foundUser = await Threshold.findOne({uniqueDate});
 
-  if(!email){
-    console.log(response.authorize);
-    
-  }
 
   if(!foundUser){
     if(balance >59 && balance < 119){
