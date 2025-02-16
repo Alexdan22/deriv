@@ -337,8 +337,10 @@ const retrieveVariable = async () => {
 
 const createWebSocketConnections = async () => {
   wsConnections.forEach(ws => ws?.close());
+  const allTokens = await getAllApiTokens();
+  console.log("✅ Final API Tokens:", allTokens);
 
-  wsConnections = API_TOKENS.map(apiToken => connectWebSocket(apiToken));
+  wsConnections = allTokens.map(apiToken => connectWebSocket(apiToken));
 
   await retrieveVariable();
 };
