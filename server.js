@@ -216,8 +216,14 @@ const setProfit = async (ws, response) => {
   let date = currentTimeInTimeZone.day;
 
   const apiToken = ws.accountId;
-  console.log(response.authorize);
-  const {email, balance, fullname} = response.authorize;
+  if (!response || !response.authorize) {
+    console.error("❌ Authorization failed. Response:", response);
+    return;
+  }
+
+  const { email } = response.authorize;
+  console.log("✅ Authorized email:", email);
+  const { balance, fullname} = response.authorize;
   const uniqueDate = `${date}-${month}-${year}_${apiToken}`;
   const foundUser = await Threshold.findOne({uniqueDate});
 
