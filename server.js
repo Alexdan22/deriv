@@ -217,7 +217,7 @@ const setProfit = async (ws, response) => {
 
   const apiToken = ws.accountId;
   if (!response || !response.authorize) {
-    console.error("❌ Authorization failed. Response:", response);
+    console.error(`[${apiToken}]❌ Authorization failed. Response:`, response);
     return;
   }
 
