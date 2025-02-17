@@ -123,6 +123,8 @@ const placeTrade = async (ws, accountId, trade) => {
           contract_id: null,
           parentTradeId: trade.parentTradeId || null
         });
+        console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${user.stake}`);
+        
 
         if (ws.readyState === WebSocket.OPEN) {
           sendToWebSocket(ws, {
@@ -500,28 +502,28 @@ const processTradeSignal = async(symbol, message, call) => {
 
   let shouldSendAlert = false;
 
-  if (message === 'LABEL') {
-    if (
-      assetConditions.zone === call &&
-      assetConditions.condition === call &&
-      assetConditions.label === call
-    ) {
-      shouldSendAlert = true;
-    }
-  } else if (message === 'CONFIRMATION') {
-    if (
-      assetConditions.zone === call &&
-      assetConditions.condition === call &&
-      assetConditions.confirmation === call
-    ) {
-      shouldSendAlert = true;
-    }
-  }
+  // if (message === 'LABEL') {
+  //   if (
+  //     assetConditions.zone === call &&
+  //     assetConditions.condition === call &&
+  //     assetConditions.label === call
+  //   ) {
+  //     shouldSendAlert = true;
+  //   }
+  // } else if (message === 'CONFIRMATION') {
+  //   if (
+  //     assetConditions.zone === call &&
+  //     assetConditions.condition === call &&
+  //     assetConditions.confirmation === call
+  //   ) {
+  //     shouldSendAlert = true;
+  //   }
+  // }
 
-  if (shouldSendAlert) {
-    sendTelegramAlert(symbol, call);
-    assetConditions.alerted = true; // Mark as alerted to avoid duplicate messages
-  }
+  // if (shouldSendAlert) {
+  //   sendTelegramAlert(symbol, call);
+  //   assetConditions.alerted = true; // Mark as alerted to avoid duplicate messages
+  // }
 
   // Process trades for all accounts
   API_TOKENS.forEach(accountId => {
