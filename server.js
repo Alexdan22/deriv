@@ -110,19 +110,19 @@ const placeTrade = async (ws, accountId, trade) => {
     //Process trade further
     if(user.profitThreshold > user.pnl){
       //Placing Trade
-        if (!accountTrades.has(accountId)) {
-          accountTrades.set(accountId, new Map());
-        }
-        const tradesForAccount = accountTrades.get(accountId);
-        tradesForAccount.set(tradeId, {
-          symbol: trade.symbol,
-          call: trade.call,
-          stake: user.stake,
-          martingaleStep: trade.martingaleStep || 0,
-          maxMartingaleSteps: 1,
-          contract_id: null,
-          parentTradeId: trade.parentTradeId || null
-        });
+          // if (!accountTrades.has(accountId)) {
+          //   accountTrades.set(accountId, new Map());
+          // }
+          // const tradesForAccount = accountTrades.get(accountId);
+          // tradesForAccount.set(tradeId, {
+          //   symbol: trade.symbol,
+          //   call: trade.call,
+          //   stake: user.stake,
+          //   martingaleStep: trade.martingaleStep || 0,
+          //   maxMartingaleSteps: 1,
+          //   contract_id: null,
+          //   parentTradeId: trade.parentTradeId || null
+          // });
         console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${user.stake}`);
         
 
@@ -500,7 +500,7 @@ const processTradeSignal = async(symbol, message, call) => {
   }
 
 
-  let shouldSendAlert = false;
+  // let shouldSendAlert = false;
 
   // if (message === 'LABEL') {
   //   if (
@@ -526,14 +526,9 @@ const processTradeSignal = async(symbol, message, call) => {
   // }
 
   // Process trades for all accounts
+  
+  
   API_TOKENS.forEach(accountId => {
-
-    // if (!tradeConditions.get(symbol)[accountId]) {
-    //   console.log(`Initializing trade conditions for ${accountId}`);
-    //   tradeConditions.get(symbol)[accountId] = { zone: null, label: null, confirmation: null, condition: null };
-    // }
-
-    // const accountConditions = tradeConditions.get(symbol)[accountId];
 
     if (message === 'LABEL') {
       if (
@@ -542,6 +537,8 @@ const processTradeSignal = async(symbol, message, call) => {
         assetConditions.label === call
       ) {
         const ws = wsConnections.find(conn => conn.accountId === accountId);
+        console.log(`[${accountId}] Placing trade for ${call} on ${symbol}`);
+        
         if (ws) {
           placeTrade(ws, accountId, {
             symbol: `frx${symbol}`,
@@ -556,6 +553,7 @@ const processTradeSignal = async(symbol, message, call) => {
         assetConditions.confirmation === call
       ) {
         const ws = wsConnections.find(conn => conn.accountId === accountId);
+        console.log(`[${accountId}] Placing trade for ${call} on ${symbol}`);
         if (ws) {
           placeTrade(ws, accountId, {
             symbol: `frx${symbol}`,
@@ -564,35 +562,7 @@ const processTradeSignal = async(symbol, message, call) => {
         }
       }
     }
-    
 
-      // if (
-      //   message === 'LABEL' &&
-      //   accountConditions.zone === call &&
-      //   accountConditions.condition === call &&
-      //   accountConditions.label === call
-      // ) {
-      //   const ws = wsConnections.find(conn => conn.accountId === accountId);
-      //   if (ws) {
-      //     placeTrade(ws, accountId, {
-      //       symbol: `frx${symbol}`,
-      //       call
-      //     });
-      //   }
-      // } else if (
-      //   message === 'CONFIRMATION' &&
-      //   accountConditions.zone === call &&
-      //   accountConditions.condition === call &&
-      //   accountConditions.confirmation === call
-      // ) {
-      //   const ws = wsConnections.find(conn => conn.accountId === accountId);
-      //   if (ws) {
-      //     placeTrade(ws, accountId, {
-      //       symbol: `frx${symbol}`,
-      //       call
-      //     });
-      //   }
-      // }
   });
 };
 
