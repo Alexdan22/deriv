@@ -346,14 +346,23 @@ const retrieveVariable = async () => {
 };
 
 const createWebSocketConnections = async () => {
+  // Close existing connections first
   wsConnections.forEach(ws => ws?.close());
+
   const allTokens = await getAllApiTokens();
   console.log("✅ Final API Tokens:", allTokens);
 
-  wsConnections = allTokens.map(apiToken => connectWebSocket(apiToken));
+  // Ensure no duplicate WebSocket connections
+  wsConnections = allTokens.map(apiToken => {
+    // Check if the connection for this token already exists
+    if (!wsConnections.some(conn => conn.accountId === apiToken)) {
+      return connectWebSocket(apiToken);
+    }
+  }).filter(Boolean); // Remove undefined values
 
   await retrieveVariable();
 };
+
 
 const connectWebSocket = (apiToken) => {
   const ws = new WebSocket(WEBSOCKET_URL);
@@ -426,10 +435,16 @@ const connectWebSocket = (apiToken) => {
   });
 
   ws.on('close', () => {
-    console.log(`[${apiToken}] Connection closed, cleaning up...`);
-    wsConnections = wsConnections.filter(conn => conn.accountId !== apiToken);
-    setTimeout(() => connectWebSocket(apiToken), 10000);
+      console.log(`[${apiToken}] Connection closed, cleaning up...`);
+      wsConnections = wsConnections.filter(conn => conn.accountId !== apiToken);
+      
+      setTimeout(() => {
+          if (!wsConnections.find(conn => conn.accountId === apiToken)) {
+              connectWebSocket(apiToken);
+          }
+      }, 10000);
   });
+
 
   ws.on('error', (error) => console.error(`[${apiToken}] WebSocket error:`, error));
 
