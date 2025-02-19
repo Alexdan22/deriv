@@ -110,19 +110,19 @@ const placeTrade = async (ws, accountId, trade) => {
     //Process trade further
     if(user.profitThreshold > user.pnl){
       //Placing Trade
-          // if (!accountTrades.has(accountId)) {
-          //   accountTrades.set(accountId, new Map());
-          // }
-          // const tradesForAccount = accountTrades.get(accountId);
-          // tradesForAccount.set(tradeId, {
-          //   symbol: trade.symbol,
-          //   call: trade.call,
-          //   stake: user.stake,
-          //   martingaleStep: trade.martingaleStep || 0,
-          //   maxMartingaleSteps: 1,
-          //   contract_id: null,
-          //   parentTradeId: trade.parentTradeId || null
-          // });
+          if (!accountTrades.has(accountId)) {
+            accountTrades.set(accountId, new Map());
+          }
+          const tradesForAccount = accountTrades.get(accountId);
+          tradesForAccount.set(tradeId, {
+            symbol: trade.symbol,
+            call: trade.call,
+            stake: user.stake,
+            martingaleStep: trade.martingaleStep || 0,
+            maxMartingaleSteps: 1,
+            contract_id: null,
+            parentTradeId: trade.parentTradeId || null
+          });
         console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${user.stake}`);
         
 
