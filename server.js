@@ -135,12 +135,13 @@ const placeTrade = async (ws, accountId, trade) => {
               basis: "stake",
               contract_type: trade.call === "call" ? "CALL" : "PUT",
               currency: "USD",
-              duration: 5,
+              duration: trade.symbol === "frxXAUUSD" ? 5 : 15, // ✅ Dynamic duration
               duration_unit: "m",
               symbol: trade.symbol,
             },
             passthrough: { custom_trade_id: customTradeId },
           });
+          
         } else {
           console.error(`[${accountId}] WebSocket is not open. Cannot place trade.`);
         }
