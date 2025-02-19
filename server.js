@@ -226,6 +226,8 @@ const setProfit = async (ws, response) => {
 
   const { email } = response.authorize;
   console.log(`[${apiToken}]✅ Authorized email:`, email);
+  console.log(response.authorize);
+  
   const { balance, fullname} = response.authorize;
   const uniqueDate = `${date}-${month}-${year}_${apiToken}`;
   const foundUser = await Threshold.findOne({uniqueDate});
