@@ -500,7 +500,6 @@ const processTradeSignal = async(symbol, message, call) => {
       ) {
         const ws = wsMap.get(accountId); // ✅ Use Map instead of array
         if (ws) {
-          console.log(`[${accountId}] 🎯 WebSocket found, sending trade request.`);
           placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
         } else {
           console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
