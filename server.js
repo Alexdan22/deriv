@@ -91,6 +91,8 @@ const tradeConditions = new Map();
 const WEBSOCKET_URL = 'wss://ws.derivws.com/websockets/v3?app_id=67402';
 const PING_INTERVAL = 30000;
 let wsConnections = [];
+let wsMap = new Map(); // Store WebSocket connections
+
 
 const sendToWebSocket = (ws, data) => {
   if (ws?.readyState === WebSocket.OPEN) {
@@ -307,11 +309,18 @@ const retrieveVariable = async () => {
 };
 
 const createWebSocketConnections = async () => {
-  wsConnections.forEach(ws => ws?.close());
+  // Close existing WebSockets on restart
+  wsMap.forEach(ws => ws?.close());
+  wsMap.clear(); // Clear all WebSockets before re-adding
+
   const allTokens = await getAllApiTokens();
   console.log("✅ Final API Tokens:", allTokens);
 
-  wsConnections = allTokens.map(apiToken => connectWebSocket(apiToken));
+  allTokens.forEach(apiToken => {
+    if (!wsMap.has(apiToken)) {
+      wsMap.set(apiToken, connectWebSocket(apiToken)); // Store WebSocket
+    }
+  });
 
   await retrieveVariable();
 };
@@ -342,7 +351,6 @@ const connectWebSocket = (apiToken) => {
       switch (response.msg_type) {
         case "authorize":
           try {
-
             setProfit(ws, response);
           } catch (error) {
             console.error(`[${apiToken}] Authorization failed:`, error);
@@ -386,18 +394,24 @@ const connectWebSocket = (apiToken) => {
   });
 
   ws.on('close', () => {
-      console.log(`[${apiToken}] Connection closed, attempting reconnection...`);
-      
-      setTimeout(() => {
-        connectWebSocket(apiToken);
-      }, 10000);
-  });
+    console.log(`[${apiToken}] Connection closed, attempting reconnection...`);
 
+    setTimeout(() => {
+      const existingWs = wsMap.get(apiToken);
+
+      // Only reconnect if the current WebSocket is actually closed
+      if (existingWs === ws && existingWs.readyState === WebSocket.CLOSED) {
+        console.log(`[${apiToken}] Reconnecting WebSocket...`);
+        wsMap.set(apiToken, connectWebSocket(apiToken));
+      }
+    }, 10000);
+  });
 
   ws.on('error', (error) => console.error(`[${apiToken}] WebSocket error:`, error));
 
   return ws;
 };
+
 
 const processTradeSignal = async(symbol, message, call) => {
 
