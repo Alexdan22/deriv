@@ -270,8 +270,6 @@ const retrieveVariable = async () => {
     if (variables.length > 0) {
       variables.forEach(variable => {
         const { symbol, variables: { zone: savedZone, condition: savedCondition } } = variable;
-        console.log(`✅ Restoring variables for ${symbol}: Zone: ${savedZone}, Condition: ${savedCondition}`);
-        
 
         if (!tradeConditions.has(symbol)) {
           tradeConditions.set(symbol, new Map());
