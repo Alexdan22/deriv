@@ -22,6 +22,7 @@ const profitSchema = new mongoose.Schema({
   email: String,
   name: String,
   apiToken: String,
+  dynamicBalance: Number,
   balance: Number,
   stake: Number,
   profitThreshold: Number,
@@ -36,7 +37,6 @@ const profitSchema = new mongoose.Schema({
     }
   ],
   tradePlan: Number,
-  profitThreshold: Number, // 15% of Trade plan
   stopLoss: Number,
   date: String,
   uniqueDate: String
