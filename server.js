@@ -116,6 +116,8 @@ const placeTrade = async (ws, accountId, trade) => {
     const stopLoss = user.stake * user.stopLoss;
     const dynamicStopLoss = user.dynamicBalance - stopLoss;
     const stopLossCondition = user.dynamicBalance - dynamicStopLoss;
+    console.log(`[${accountId}] Balance: ${user.balance}, Stop Loss Condition: ${stopLossCondition}`);
+
     if(user.profitThreshold > user.pnl){
       //Placing Trade
           if (!accountTrades.has(accountId)) {
