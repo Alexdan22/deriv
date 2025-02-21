@@ -108,6 +108,9 @@ const placeTrade = async (ws, accountId, trade) => {
 
   if(user){
     //Process trade further
+    const stopLoss = user.stake * user.stopLoss;
+    const dynamicStopLoss = user.dynamicBalance - stopLoss;
+    const stopLossCondition = user.dynamicBalance - dynamicStopLoss;
     if(user.profitThreshold > user.pnl){
       //Placing Trade
           if (!accountTrades.has(accountId)) {
@@ -125,7 +128,7 @@ const placeTrade = async (ws, accountId, trade) => {
           });
         console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${user.stake}`);
         
-
+      if(user.balance > stopLossCondition){
         if (ws.readyState === WebSocket.OPEN) {
           sendToWebSocket(ws, {
             buy: "1",
@@ -141,10 +144,16 @@ const placeTrade = async (ws, accountId, trade) => {
             },
             passthrough: { custom_trade_id: customTradeId },
           });
+          user.balance = user.balance - user.stake;
+          user.save();
           
         } else {
           console.error(`[${accountId}] WebSocket is not open. Cannot place trade.`);
         }
+      }else{
+        //Stop loss reached, skipping trades
+        console.log(`[${accountId}] Stop loss reached for the day, skipping trade`);
+      }
         
     }else{
       //Profit threshold reached, skipping trades
@@ -167,8 +176,6 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   const uniqueDate = `${date}-${month}-${year}_${accountId}`;
   const user = await Threshold.findOne({uniqueDate});
 
-  const newValue = (user.pnl || 0) + (contract.profit || 0);
-  await Threshold.updateOne({ uniqueDate }, { $set: { pnl: newValue } });
 
 
   
@@ -178,38 +185,24 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   const trade = tradesForAccount.get(tradeId);
   if (!trade) return;
   tradesForAccount.delete(tradeId);
-  // if (contract.profit < 0) {
-  //   if (trade.martingaleStep < trade.maxMartingaleSteps) {
-  //     // const newStake = trade.stake * 2;
-  //     const ws = wsConnections.find(conn => conn.accountId === accountId);
-  //     if(condition.get(accountId) !== null){
-  //       await placeTrade(ws, accountId, {
-  //         symbol: trade.symbol,
-  //         call: condition.get(accountId) === "call" ? "CALL" : "PUT",
-  //         stake: trade.stake,
-  //         martingaleStep: trade.martingaleStep + 1,
-  //         parentTradeId: tradeId
-  //       });
-  //     }else{
-  //       await placeTrade(ws, accountId, {
-  //         symbol: trade.symbol,
-  //         call: trade.call,
-  //         stake: trade.stake,
-  //         martingaleStep: trade.martingaleStep + 1,
-  //         parentTradeId: tradeId
-  //       });
-  //     }
-      
-
-  //     console.log(`[${accountId}] Martingale step ${trade.martingaleStep + 1} for trade chain ${trade.parentTradeId || tradeId}`);
-  //   } else {
-  //     console.log(`[${accountId}] Max Martingale steps reached for trade chain ${trade.parentTradeId || tradeId}`);
-  //     tradesForAccount.delete(tradeId);
-  //   }
-  // }else{
-  //   console.log(`[${accountId}] Trade won, Returning to Idle state`);
-    
-  // }
+  if (contract.profit < 0) {
+    user.pnl = user.pnl + (contract.profit || 0);
+    user.save();
+    console.log(`[${accountId}] Trade lost, Calculating new stop loss`);
+  }else{
+    if((user.balance +(contract.profit || 0)) > user.dynamicBalance){
+      //New highest balance found, Adding up to balance
+      user.balance = user.balance + (contract.profit || 0);
+      user.dynamicBalance = user.balance;
+      user.save();
+      console.log(`[${accountId}] Trade won, Returning to idle state...`);
+    }else{
+      //New highest balance not found, deducting from balance
+      user.balance = user.balance + (contract.profit || 0);
+      user.save();
+      console.log(`[${accountId}] Trade won, Returning to idle state...`);
+    }
+  }
 
 };
 
@@ -224,77 +217,41 @@ const setProfit = async (ws, response) => {
     return;
   }
 
-  const { email } = response.authorize;
+  const { email, balance, fullname } = response.authorize;
   console.log(`[${apiToken}]✅ Authorized email:`, email);
-  const { balance, fullname} = response.authorize;
+  
   const uniqueDate = `${date}-${month}-${year}_${apiToken}`;
-  const foundUser = await Threshold.findOne({uniqueDate});
-
-
-  if(!foundUser){
-    if(balance >59 && balance < 119){
-      const today = new Threshold({
-        email,
-        name: fullname,
-        balance,
-        stake:4,
-        uniqueDate,
-        apiToken,
-        date: `${date}-${month}-${year}`,
-        pnl: 0,
-        profitThreshold:6
+  const foundUser = await Threshold.findOne({ uniqueDate });
   
-      });
-      today.save();
-
-    }else if(balance >119 && balance < 179){
-      const today = new Threshold({
-        email,
-        name: fullname,
-        balance,
-        stake:8,
-        uniqueDate,
-        apiToken,
-        date: `${date}-${month}-${year}`,
-        pnl: 0,
-        profitThreshold:12
-  
-      });
-      today.save();
-
-    }else if(balance >179 && balance < 299){
-      const today = new Threshold({
-        email,
-        name: fullname,
-        balance,
-        stake:12,
-        uniqueDate,
-        apiToken,
-        date: `${date}-${month}-${year}`,
-        pnl: 0,
-        profitThreshold:18
-  
-      });
-      today.save();
-
-    }else if(balance > 299){
-      const today = new Threshold({
-        email,
-        name: fullname,
-        balance,
-        stake:20,
-        uniqueDate,
-        apiToken,
-        date: `${date}-${month}-${year}`,
-        pnl: 0,
-        profitThreshold:30
-  
-      });
-      today.save();
-
-    }
+  if (!foundUser) {
+    if(balance > 49){
+      // Define stake levels
+    const stakeLevels = [50, 100, 200, 300, 400, 500, 600, 700, 800];
     
+    // Determine appropriate stake based on balance
+    const stake = stakeLevels.find((s) => balance >= s && balance < s + 100) || 800;
+
+    
+    const today = new Threshold({
+      email,
+      name: fullname,
+      balance,
+      dynamicBalance: balance, // Dynamic balance for stoploss calculation
+      stake: stake * 0.025, // 2.5% of Trade plan
+      uniqueDate,
+      apiToken,
+      date: `${date}-${month}-${year}`,
+      pnl: 0,
+      tradePlan: stake,
+      profitThreshold: stake * 0.15, // 15% of Trade plan
+      stopLoss: 4, // 10% of Trade plan
+      trades: [],
+    });
+  
+    await today.save();
+    }
   }
+  
 };
 
 const retrieveVariable = async () => {
@@ -347,23 +304,14 @@ const retrieveVariable = async () => {
 };
 
 const createWebSocketConnections = async () => {
-  // Close existing connections first
   wsConnections.forEach(ws => ws?.close());
-
   const allTokens = await getAllApiTokens();
   console.log("✅ Final API Tokens:", allTokens);
 
-  // Ensure no duplicate WebSocket connections
-  wsConnections = allTokens.map(apiToken => {
-    // Check if the connection for this token already exists
-    if (!wsConnections.some(conn => conn.accountId === apiToken)) {
-      return connectWebSocket(apiToken);
-    }
-  }).filter(Boolean); // Remove undefined values
+  wsConnections = allTokens.map(apiToken => connectWebSocket(apiToken));
 
   await retrieveVariable();
 };
-
 
 const connectWebSocket = (apiToken) => {
   const ws = new WebSocket(WEBSOCKET_URL);
@@ -372,7 +320,6 @@ const connectWebSocket = (apiToken) => {
   let pingInterval;
 
   ws.on('open', () => {
-    console.log(`[${apiToken}] Connected`);
     sendToWebSocket(ws, { authorize: apiToken });
 
     if (pingInterval) clearInterval(pingInterval);
@@ -436,13 +383,10 @@ const connectWebSocket = (apiToken) => {
   });
 
   ws.on('close', () => {
-      console.log(`[${apiToken}] Connection closed, cleaning up...`);
-      wsConnections = wsConnections.filter(conn => conn.accountId !== apiToken);
+      console.log(`[${apiToken}] Connection closed, attempting reconnection...`);
       
       setTimeout(() => {
-          if (!wsConnections.find(conn => conn.accountId === apiToken)) {
-              connectWebSocket(apiToken);
-          }
+        connectWebSocket(apiToken);
       }, 10000);
   });
 
@@ -450,21 +394,6 @@ const connectWebSocket = (apiToken) => {
   ws.on('error', (error) => console.error(`[${apiToken}] WebSocket error:`, error));
 
   return ws;
-};
-
-const sendTelegramAlert = async (symbol, call) => {
-  const messageType = call === 'call' ? 'BUY 🟢🟢🟢' : 'SELL 🔴🔴🔴';
-  const alertMessage = 
-  `Hello Traders,
-
-  ${symbol}
-
-  ${messageType}`;
-
-  await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    chat_id: CHANNEL_CHAT_ID,
-    text: alertMessage,
-  });
 };
 
 const processTradeSignal = async(symbol, message, call) => {
