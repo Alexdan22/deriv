@@ -101,7 +101,6 @@ const sendToWebSocket = (ws, data) => {
 };
 
 const placeTrade = async (ws, accountId, trade) => {
-  console.log('I was run');
   
   let year = currentTimeInTimeZone.year;
   let month = currentTimeInTimeZone.month;
@@ -118,7 +117,7 @@ const placeTrade = async (ws, accountId, trade) => {
     const stopLoss = user.stake * user.stopLoss;
     const dynamicStopLoss = user.dynamicBalance - stopLoss;
     const stopLossCondition = user.dynamicBalance - dynamicStopLoss;
-    console.log(`[${accountId}] Balance: ${user.balance}, Stop Loss Condition: ${stopLossCondition}`);
+    console.log(`[${accountId}] Balance: ${user.balance}, Stop Loss Condition: ${dynamicStopLoss}`);
 
     if(user.profitThreshold > user.pnl){
       //Placing Trade
@@ -137,7 +136,7 @@ const placeTrade = async (ws, accountId, trade) => {
           });
         console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${user.stake}`);
         
-      if(user.balance > stopLossCondition){
+      if(user.balance > dynamicStopLoss){
         if (ws.readyState === WebSocket.OPEN) {
           sendToWebSocket(ws, {
             buy: "1",
@@ -197,19 +196,16 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   if (contract.profit < 0) {
     user.pnl = user.pnl + (contract.profit || 0);
     user.save();
-    console.log(`[${accountId}] Trade lost, Calculating new stop loss`);
   }else{
     if((user.balance +(contract.profit || 0)) > user.dynamicBalance){
       //New highest balance found, Adding up to balance
       user.balance = user.balance + (contract.profit || 0);
       user.dynamicBalance = user.balance;
       user.save();
-      console.log(`[${accountId}] Trade won, Returning to idle state...`);
     }else{
       //New highest balance not found, deducting from balance
       user.balance = user.balance + (contract.profit || 0);
       user.save();
-      console.log(`[${accountId}] Trade won, Returning to idle state...`);
     }
   }
 
