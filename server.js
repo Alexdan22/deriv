@@ -101,6 +101,8 @@ const sendToWebSocket = (ws, data) => {
 };
 
 const placeTrade = async (ws, accountId, trade) => {
+  console.log('I was run');
+  
   let year = currentTimeInTimeZone.year;
   let month = currentTimeInTimeZone.month;
   let date = currentTimeInTimeZone.day;
