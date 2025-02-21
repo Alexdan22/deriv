@@ -199,15 +199,17 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   }else{
     console.log(`[${accountId}] Profit: ${contract.profit}`);
     
-    if((user.balance +(contract.profit || 0)) > user.dynamicBalance){
+    if((user.balance +(user.stake +(contract.profit || 0))) > user.dynamicBalance){
       //New highest balance found, Adding up to balance
-      const newBalance = user.balance + (contract.profit || 0);
+      const newBalance = user.balance + (user.stake +(contract.profit || 0));
+      user.pnl = user.pnl + (contract.profit || 0);
       user.balance = newBalance
       user.dynamicBalance = newBalance
       user.save();
     }else{
       //New highest balance not found, deducting from balance
-      const newBalance = user.balance + (contract.profit || 0);
+      const newBalance = user.balance + (user.stake +(contract.profit || 0));
+      user.pnl = user.pnl + (contract.profit || 0);
       user.balance = newBalance
       user.save();
     }
