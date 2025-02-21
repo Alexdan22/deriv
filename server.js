@@ -35,6 +35,9 @@ const profitSchema = new mongoose.Schema({
       profit: Number
     }
   ],
+  tradePlan: Number,
+  profitThreshold: Number, // 15% of Trade plan
+  stopLoss: Number,
   date: String,
   uniqueDate: String
 });
