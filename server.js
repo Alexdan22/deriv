@@ -502,14 +502,12 @@ const processTradeSignal = async(symbol, message, call) => {
         assetConditions.condition === call &&
         assetConditions.label === call
       ) {
-        const ws = wsConnections.find(conn => conn.accountId === accountId);
-        console.log(`[${accountId}] Placing trade for ${call} on ${symbol}`);
-        
+        const ws = wsMap.get(accountId); // ✅ Use Map instead of array
         if (ws) {
-          placeTrade(ws, accountId, {
-            symbol: `frx${symbol}`,
-            call
-          });
+          console.log(`[${accountId}] 🎯 WebSocket found, sending trade request.`);
+          placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
+        } else {
+          console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
         }
       }
     } else if (message === 'CONFIRMATION') {
@@ -518,13 +516,12 @@ const processTradeSignal = async(symbol, message, call) => {
         assetConditions.condition === call &&
         assetConditions.confirmation === call
       ) {
-        const ws = wsConnections.find(conn => conn.accountId === accountId);
-        console.log(`[${accountId}] Placing trade for ${call} on ${symbol}`);
+        const ws = wsMap.get(accountId); // ✅ Use Map instead of array
         if (ws) {
-          placeTrade(ws, accountId, {
-            symbol: `frx${symbol}`,
-            call
-          });
+          console.log(`[${accountId}] 🎯 WebSocket found, sending trade request.`);
+          placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
+        } else {
+          console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
         }
       }
     }
