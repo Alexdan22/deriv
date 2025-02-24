@@ -416,7 +416,6 @@ const connectWebSocket = (apiToken) => {
   return ws;
 };
 
-
 const processTradeSignal = async(symbol, message, call) => {
 
   if (!tradeConditions.has(symbol)) {
@@ -517,7 +516,6 @@ const processTradeSignal = async(symbol, message, call) => {
       ) {
         const ws = wsMap.get(accountId); // ✅ Use Map instead of array
         if (ws) {
-          console.log(`[${accountId}] 🎯 WebSocket found, sending trade request.`);
           placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
         } else {
           console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
@@ -537,8 +535,15 @@ app.post('/webhook', async (req, res) => {
   if (!symbol || !call || !message) {
     return res.status(400).send('Invalid payload');
   }
+
+  const ws = wsMap.get(accountId); // ✅ Use Map instead of array
+  if (ws) {
+    placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
+  } else {
+    console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
+  }
   
-  processTradeSignal(symbol, message, call);
+  // processTradeSignal(symbol, message, call);
     
   res.send('Signal processed');
 });
