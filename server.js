@@ -535,13 +535,14 @@ app.post('/webhook', async (req, res) => {
   if (!symbol || !call || !message) {
     return res.status(400).send('Invalid payload');
   }
-
-  const ws = wsMap.get(accountId); // ✅ Use Map instead of array
-  if (ws) {
-    placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
-  } else {
-    console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
-  }
+  API_TOKENS.forEach(accountId => {
+    const ws = wsMap.get(accountId); // ✅ Use Map instead of array
+    if (ws) {
+      placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
+    } else {
+      console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
+    }
+  });
   
   // processTradeSignal(symbol, message, call);
     
