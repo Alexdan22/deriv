@@ -498,7 +498,6 @@ const processTradeSignal = async(symbol, message, call) => {
     if (message === 'LABEL') {
       if (
         assetConditions.zone === call &&
-        assetConditions.condition === call &&
         assetConditions.label === call
       ) {
         const ws = wsMap.get(accountId); // ✅ Use Map instead of array
@@ -511,7 +510,6 @@ const processTradeSignal = async(symbol, message, call) => {
     } else if (message === 'CONFIRMATION') {
       if (
         assetConditions.zone === call &&
-        assetConditions.condition === call &&
         assetConditions.confirmation === call
       ) {
         const ws = wsMap.get(accountId); // ✅ Use Map instead of array
