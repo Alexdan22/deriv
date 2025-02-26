@@ -535,16 +535,20 @@ app.post('/webhook', async (req, res) => {
   if (!symbol || !call || !message) {
     return res.status(400).send('Invalid payload');
   }
-  API_TOKENS.forEach(accountId => {
-    const ws = wsMap.get(accountId); // ✅ Use Map instead of array
-    if (ws) {
-      placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
-    } else {
-      console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
-    }
-  });
+
+  if(message === 'MANUAL'){
+    API_TOKENS.forEach(accountId => {
+      const ws = wsMap.get(accountId); // ✅ Use Map instead of array
+      if (ws) {
+        placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
+      } else {
+        console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
+      }
+    });
+  }else if(message === 'ZONE' || message === 'LABEL' || message === 'CONFIRMATION' || message === 'CONDITION'){
+    processTradeSignal(symbol, message, call);
+  }
   
-  // processTradeSignal(symbol, message, call);
     
   res.send('Signal processed');
 });
