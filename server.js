@@ -543,7 +543,7 @@ app.post('/webhook', async (req, res) => {
         console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
       }
     });
-  }else if(message === 'ZONE' || message === 'LABEL' || message === 'CONFIRMATION' || message === 'CONDITION'){
+  }else if(message === 'ZONE' || message === 'LABEL' || message === 'CONFIRMATION'){
     processTradeSignal(symbol, message, call);
   }
   
