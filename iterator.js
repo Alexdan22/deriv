@@ -87,6 +87,8 @@ const WEBSOCKET_URL = 'wss://ws.derivws.com/websockets/v3?app_id=67402';
 const PING_INTERVAL = 30000;
 let marketPrices = [];
 let latestRSIValues = []; // Array to store the latest 6 RSI values
+let isStochasticAbove80 = false; // Tracks if Stochastic has crossed above 80
+let isStochasticBelow20 = false; // Tracks if Stochastic has crossed below 20
 let wsMap = new Map(); // Store WebSocket connections
 
 
@@ -186,15 +188,25 @@ function checkTradeSignal(stochasticValues, latestRSIValues) {
     const isRSIBuy = latestRSIValues.some(rsi => rsi < 40); // At least one RSI value below 40
     const isRSISell = latestRSIValues.some(rsi => rsi > 60); // At least one RSI value above 60
 
-    // Buy Signal: Stochastic crosses below 20 and at least one RSI value is below 40
-    if (prevK >= 20 && lastK < 20 && isRSIBuy) {
+    // Update state variables based on Stochastic values
+    if (prevK <= 80 && lastK > 80) {
+        isStochasticAbove80 = true; // Stochastic crossed above 80
+    }
+    if (prevK >= 20 && lastK < 20) {
+        isStochasticBelow20 = true; // Stochastic crossed below 20
+    }
+
+    // Buy Signal: Stochastic crosses back above 20 after being below 20, and RSI condition is met
+    if (isStochasticBelow20 && prevK < 20 && lastK >= 20 && isRSIBuy) {
         console.log("BUY Signal Triggered");
+        isStochasticBelow20 = false; // Reset the state
         return "BUY";
     }
 
-    // Sell Signal: Stochastic crosses above 80 and at least one RSI value is above 60
-    if (prevK <= 80 && lastK > 80 && isRSISell) {
+    // Sell Signal: Stochastic crosses back below 80 after being above 80, and RSI condition is met
+    if (isStochasticAbove80 && prevK > 80 && lastK <= 80 && isRSISell) {
         console.log("SELL Signal Triggered");
+        isStochasticAbove80 = false; // Reset the state
         return "SELL";
     }
 
@@ -382,12 +394,7 @@ const processMarketData = () => {
     // Aggregate tick data into 1-minute OHLC candles
     const ohlcData = aggregateOHLC(recentPrices);
 
-    if (ohlcData.length < 84){
-        console.log("Insufficient data for calculations");
-        console.log("OHLC Data length", ohlcData.length);     
-        return; // Ensure enough data for calculations
-
-    }
+    if (ohlcData.length < 84)return; // Ensure enough data for calculations
 
 
     // Extract closing prices for RSI and Stochastic calculations
@@ -402,11 +409,8 @@ const processMarketData = () => {
         latestRSIValues.shift(); // Keep only the latest 6 values
     }
 
-    console.log("Latest RSI Values:", latestRSIValues);
 
     const call = checkTradeSignal(stochasticValues, latestRSIValues);
-    console.log("RSI:", rsi);
-    console.log("Trade Signal:", call);
 
     if (call !== "HOLD") {
         API_TOKENS.forEach(accountId => {
