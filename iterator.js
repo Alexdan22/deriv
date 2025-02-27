@@ -8,8 +8,6 @@ const { DateTime } = require('luxon');
 require('dotenv').config();
 
 const API_TOKENS = process.env.API_TOKENS ? process.env.API_TOKENS.split(',') : [];
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHANNEL_CHAT_ID = process.env.CHANNEL_CHAT_ID;
 
 const app = express();
 app.use(bodyParser.json());
@@ -61,8 +59,6 @@ const Api = new mongoose.model("Api", apiTokenSchema);
 
 const Threshold = new mongoose.model('Threshold', profitSchema);
 
-const Variable = new mongoose.model('Variable', variableSchema);
-
 const timeZone = 'Asia/Kolkata';
 const currentTimeInTimeZone = DateTime.now().setZone(timeZone);
 
@@ -85,11 +81,12 @@ async function getAllApiTokens() {
   console.log("✅ Final API Tokens:", allTokens);
 })();
 
-const accountTrades = new Map();
-const tradeConditions = new Map();
+const accountTrades = new Map(); // Store trades for each account
 
 const WEBSOCKET_URL = 'wss://ws.derivws.com/websockets/v3?app_id=67402';
 const PING_INTERVAL = 30000;
+let marketPrices = [];
+let latestRSIValues = []; // Array to store the latest 6 RSI values
 let wsMap = new Map(); // Store WebSocket connections
 
 
@@ -99,6 +96,114 @@ const sendToWebSocket = (ws, data) => {
   }
 };
 
+// ---------------------------------- Trade Execution ----------------------------------
+
+
+// Function to aggregate OHLC data from tick data
+function aggregateOHLC(prices) {
+    const ohlcData = [];
+    const groupedByTenSeconds = {};
+
+    // Group prices by 10-second intervals
+    prices.forEach(price => {
+        const tenSecondTimestamp = Math.floor(price.timestamp / 10) * 10; // Round to the nearest 10 seconds
+        if (!groupedByTenSeconds[tenSecondTimestamp]) {
+            groupedByTenSeconds[tenSecondTimestamp] = [];
+        }
+        groupedByTenSeconds[tenSecondTimestamp].push(price.price);
+    });
+
+    // Calculate OHLC for each 10-second interval
+    for (const [timestamp, pricesInTenSeconds] of Object.entries(groupedByTenSeconds)) {
+        if (pricesInTenSeconds.length > 0) {
+            const open = pricesInTenSeconds[0];
+            const high = Math.max(...pricesInTenSeconds);
+            const low = Math.min(...pricesInTenSeconds);
+            const close = pricesInTenSeconds[pricesInTenSeconds.length - 1];
+
+            ohlcData.push({
+                timestamp: parseInt(timestamp),
+                open,
+                high,
+                low,
+                close
+            });
+        }
+    }
+
+    return ohlcData;
+}
+
+
+// Modify the `calculateStochastic` and `calculateRSI` functions to work with the 14-minute window
+function calculateStochastic(prices, period = 84, smoothing = 3) {
+    if (prices.length < period) return 50; // Return neutral value if insufficient data
+
+    let highestHigh = Math.max(...prices.slice(-period));
+    let lowestLow = Math.min(...prices.slice(-period));
+    let currentClose = prices[prices.length - 1];
+
+    let percentK = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+
+    return percentK;
+}
+
+function calculateRSI(prices, period = 84) {
+    if (prices.length < period) return 50; // Return neutral value if insufficient data
+
+    let gains = 0, losses = 0;
+
+    // Calculate gains and losses for the entire period
+    for (let i = 1; i < prices.length; i++) {
+        let change = prices[i] - prices[i - 1];
+        if (change > 0) gains += change;
+        else losses -= change;
+    }
+
+    // Calculate average gains and losses
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+
+    // Avoid division by zero
+    if (avgLoss === 0) return 100;
+
+    // Calculate RS and RSI
+    let rs = avgGain / avgLoss;
+    let rsi = 100 - (100 / (1 + rs));
+
+    return rsi;
+}
+// Function to check for trade signals based on strategy
+function checkTradeSignal(stochasticValues, latestRSIValues) {
+    let lastK = stochasticValues[stochasticValues.length - 1];
+    let prevK = stochasticValues[stochasticValues.length - 2];
+
+    console.log("Last Stochastic Value:", lastK);
+    console.log("Previous Stochastic Value:", prevK);
+    console.log("Latest RSI Values:", latestRSIValues);
+
+    // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
+    const isRSIBuy = latestRSIValues.some(rsi => rsi < 40); // At least one RSI value below 40
+    const isRSISell = latestRSIValues.some(rsi => rsi > 60); // At least one RSI value above 60
+
+    // Buy Signal: Stochastic crosses below 20 and at least one RSI value is below 40
+    if (prevK >= 20 && lastK < 20 && isRSIBuy) {
+        console.log("BUY Signal Triggered");
+        return "BUY";
+    }
+
+    // Sell Signal: Stochastic crosses above 80 and at least one RSI value is above 60
+    if (prevK <= 80 && lastK > 80 && isRSISell) {
+        console.log("SELL Signal Triggered");
+        return "SELL";
+    }
+
+    // Default to HOLD
+    console.log("HOLD Signal");
+    return "HOLD";
+}
+
+// Function to place trade on WebSocket
 const placeTrade = async (ws, accountId, trade) => {
   
   let year = currentTimeInTimeZone.year;
@@ -143,7 +248,7 @@ const placeTrade = async (ws, accountId, trade) => {
             parameters: {
               amount: user.stake,
               basis: "stake",
-              contract_type: trade.call === "call" ? "CALL" : "PUT",
+              contract_type: trade.call === "BUY" ? "CALL" : "PUT",
               currency: "USD",
               duration: trade.symbol === "frxXAUUSD" ? 5 : 15, // ✅ Dynamic duration
               duration_unit: "m",
@@ -175,6 +280,7 @@ const placeTrade = async (ws, accountId, trade) => {
   }
 };
 
+// Function to handle trade result
 const handleTradeResult = async (contract, accountId, tradeId) => {
   let year = currentTimeInTimeZone.year;
   let month = currentTimeInTimeZone.month;
@@ -216,6 +322,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
 };
 
+// Function to set Profit Threshold for every users
 const setProfit = async (ws, response) => {
   let year = currentTimeInTimeZone.year;
   let month = currentTimeInTimeZone.month;
@@ -264,52 +371,55 @@ const setProfit = async (ws, response) => {
   
 };
 
-const retrieveVariable = async () => {
-  try {
-    const variables = await Variable.find({}); // Retrieve all saved variables
+const processMarketData = () => {
+    const now = DateTime.now().toSeconds(); // Current time in seconds
+    const fourteenMinutesAgo = now - (14 * 60); // 14 minutes ago in seconds
 
-    if (variables.length > 0) {
-      variables.forEach(variable => {
-        const { symbol, variables: { zone: savedZone, condition: savedCondition } } = variable;
+    // Filter marketPrices to only include prices from the last 14 minutes
+    const recentPrices = marketPrices
+        .filter(price => price.timestamp >= fourteenMinutesAgo);
 
-        if (!tradeConditions.has(symbol)) {
-          tradeConditions.set(symbol, new Map());
+    // Aggregate tick data into 1-minute OHLC candles
+    const ohlcData = aggregateOHLC(recentPrices);
 
-          tradeConditions.set(symbol, {
-            zone: savedZone,
-            label: null,
-            confirmation: null,
-            condition: savedCondition
-          });
-        }
+    if (ohlcData.length < 84){
+        console.log("Insufficient data for calculations");
+        console.log("OHLC Data length", ohlcData.length);     
+        return; // Ensure enough data for calculations
 
-      });
-
-      console.log("✅ Variables restored from DB.");
-    } else {
-      console.log("⚠️ No saved variables found. Initializing with default values.");
-
-      const newVariable1 = new Variable({
-        symbol: "XAUUSD",
-        variables: {
-          zone: "null",
-          condition: "null"
-        }
-      });
-      await newVariable1.save();
-      const newVariable2 = new Variable({
-        symbol: "EURUSD",
-        variables: {
-          zone: "null",
-          condition: "null"
-        }
-      });
-      await newVariable2.save();
     }
-  } catch (error) {
-    console.error("❌ Error retrieving variables:", error);
-  }
+
+
+    // Extract closing prices for RSI and Stochastic calculations
+    const closingPrices = ohlcData.map(candle => candle.close);
+
+    const stochasticValues = closingPrices.map((_, i) => calculateStochastic(closingPrices.slice(0, i + 1))).filter(v => v !== null);
+    const rsi = calculateRSI(closingPrices);
+
+    // Update the latest RSI values array
+    latestRSIValues.push(rsi);
+    if (latestRSIValues.length > 6) {
+        latestRSIValues.shift(); // Keep only the latest 6 values
+    }
+
+    console.log("Latest RSI Values:", latestRSIValues);
+
+    const call = checkTradeSignal(stochasticValues, latestRSIValues);
+    console.log("RSI:", rsi);
+    console.log("Trade Signal:", call);
+
+    if (call !== "HOLD") {
+        API_TOKENS.forEach(accountId => {
+            const ws = wsMap.get(accountId); // ✅ Use Map instead of array
+            if (ws.readyState === WebSocket.OPEN) {
+                placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
+            } else {
+                console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
+            }
+        });
+    }
 };
+
 
 const createWebSocketConnections = async () => {
   // Close existing WebSockets on restart
@@ -324,8 +434,6 @@ const createWebSocketConnections = async () => {
       wsMap.set(apiToken, connectWebSocket(apiToken)); // Store WebSocket
     }
   });
-
-  await retrieveVariable();
 };
 
 const connectWebSocket = (apiToken) => {
@@ -336,6 +444,7 @@ const connectWebSocket = (apiToken) => {
 
   ws.on('open', () => {
     sendToWebSocket(ws, { authorize: apiToken });
+    sendToWebSocket(ws, { ticks: "frxXAUUSD" });
 
     if (pingInterval) clearInterval(pingInterval);
     pingInterval = setInterval(() => {
@@ -359,6 +468,27 @@ const connectWebSocket = (apiToken) => {
             console.error(`[${apiToken}] Authorization failed:`, error);
           }
           break;
+        
+        case "tick":
+            try {
+                // Store the price and timestamp in the marketPrices array
+                marketPrices.push({
+                    price: response.tick.quote,
+                    timestamp: response.tick.epoch // Unix epoch time in seconds
+                });
+
+                // Keep only the last 14 minutes of data
+                const now = DateTime.now().toSeconds(); // Current time in seconds
+                const fourteenMinutesAgo = now - (14 * 60); // 14 minutes ago in seconds
+
+                // Filter out old data
+                marketPrices = marketPrices.filter(price => price.timestamp >= fourteenMinutesAgo);
+
+                // Debug log to check the number of prices in the last 14 minutes
+            } catch (error) {
+                console.error(`[${apiToken}] Tick failed:`, error);
+            }
+            break;
 
         case "buy":
           if (!response.buy || !response.buy.contract_id) {
@@ -415,142 +545,18 @@ const connectWebSocket = (apiToken) => {
   return ws;
 };
 
-const processTradeSignal = async(symbol, message, call) => {
-
-  if (!tradeConditions.has(symbol)) {
-    tradeConditions.set(symbol, {
-      zone: null,
-      label: null,
-      confirmation: null,
-      condition: null
-    });
-  }
-
-  const assetConditions = tradeConditions.get(symbol);
-
-  // Update the asset-wide condition
-  switch (message) {
-    case 'ZONE': 
-      assetConditions.zone = call;
-      break;
-    case 'LABEL': 
-      assetConditions.label = call;
-      break;
-    case 'CONFIRMATION': 
-      assetConditions.confirmation = call;
-      break;
-    case 'CONDITION': 
-      assetConditions.condition = call;
-      break;
-  }
-
-  const variables = await Variable.find({}); // Retrieve all saved variables
-
-  if (variables.length > 0) {
-    for (const variable of variables) {
-      if (variable.symbol === symbol) {
-        switch (message) {
-          case 'ZONE': 
-            variable.variables.zone = assetConditions.zone;
-            break; 
-          case 'CONDITION': 
-            variable.variables.condition = assetConditions.condition;
-            break;
-        }
-
-        await variable.save(); // Save each updated document
-      }
-    }
-  }
-
-
-  // let shouldSendAlert = false;
-
-  // if (message === 'LABEL') {
-  //   if (
-  //     assetConditions.zone === call &&
-  //     assetConditions.condition === call &&
-  //     assetConditions.label === call
-  //   ) {
-  //     shouldSendAlert = true;
-  //   }
-  // } else if (message === 'CONFIRMATION') {
-  //   if (
-  //     assetConditions.zone === call &&
-  //     assetConditions.condition === call &&
-  //     assetConditions.confirmation === call
-  //   ) {
-  //     shouldSendAlert = true;
-  //   }
-  // }
-
-  // if (shouldSendAlert) {
-  //   sendTelegramAlert(symbol, call);
-  //   assetConditions.alerted = true; // Mark as alerted to avoid duplicate messages
-  // }
-
-  // Process trades for all accounts
-  
-  
-  API_TOKENS.forEach(accountId => {
-
-    if (message === 'LABEL') {
-      if (
-        assetConditions.zone === call &&
-        assetConditions.label === call
-      ) {
-        const ws = wsMap.get(accountId); // ✅ Use Map instead of array
-        if (ws) {
-          placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
-        } else {
-          console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
-        }
-      }
-    } else if (message === 'CONFIRMATION') {
-      if (
-        assetConditions.zone === call &&
-        assetConditions.confirmation === call
-      ) {
-        const ws = wsMap.get(accountId); // ✅ Use Map instead of array
-        if (ws) {
-          placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
-        } else {
-          console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
-        }
-      }
-    }
-
-  });
-};
+// Example usage with mock data
+setInterval(processMarketData, 10000); // Process data every minute
 
 
 
 
-app.post('/webhook', async (req, res) => {
-  const { symbol, call, message } = req.body;
-  
-  if (!symbol || !call || !message) {
-    return res.status(400).send('Invalid payload');
-  }
 
-  if(message === 'MANUAL'){
-    API_TOKENS.forEach(accountId => {
-      const ws = wsMap.get(accountId); // ✅ Use Map instead of array
-      if (ws) {
-        placeTrade(ws, accountId, { symbol: `frx${symbol}`, call });
-      } else {
-        console.error(`[${accountId}] ❌ WebSocket not found, cannot place trade.`);
-      }
-    });
-  }else if(message === 'ZONE' || message === 'LABEL' || message === 'CONFIRMATION'){
-    processTradeSignal(symbol, message, call);
-  }
-  
-    
-  res.send('Signal processed');
-});
+
+
 
 app.listen(3000, () => {
-  console.log('Server running on port 3000');
-  createWebSocketConnections();
-});
+    console.log('Server running on port 3000');
+    createWebSocketConnections();
+  });
+  
