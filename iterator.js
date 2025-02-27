@@ -90,6 +90,7 @@ let latestRSIValues = []; // Array to store the latest 6 RSI values
 let isStochasticAbove80 = false; // Tracks if Stochastic has crossed above 80
 let isStochasticBelow20 = false; // Tracks if Stochastic has crossed below 20
 let wsMap = new Map(); // Store WebSocket connections
+let tradeInProgress = false; // Flag to prevent multiple trades
 
 
 const sendToWebSocket = (ws, data) => {
@@ -217,7 +218,12 @@ function checkTradeSignal(stochasticValues, latestRSIValues) {
 
 // Function to place trade on WebSocket
 const placeTrade = async (ws, accountId, trade) => {
-  
+
+  if (tradeInProgress) {
+      console.log("Trade already in progress. Skipping new trade...");
+      return;
+   }
+   
   let year = currentTimeInTimeZone.year;
   let month = currentTimeInTimeZone.month;
   let date = currentTimeInTimeZone.day;
@@ -254,6 +260,7 @@ const placeTrade = async (ws, accountId, trade) => {
         
       if(user.balance > dynamicStopLoss){
         if (ws.readyState === WebSocket.OPEN) {
+            tradeInProgress = true;
           sendToWebSocket(ws, {
             buy: "1",
             price: user.stake,
@@ -300,6 +307,8 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
   const uniqueDate = `${date}-${month}-${year}_${accountId}`;
   const user = await Threshold.findOne({uniqueDate});
+
+  tradeInProgress = false;
 
 
 
