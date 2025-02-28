@@ -176,50 +176,51 @@ function calculateRSI(prices, period = 84) {
 
     return rsi;
 }
-// Function to check for trade signals based on strategy
+
 function checkTradeSignal(stochasticValues, latestRSIValues) {
-  // Ensure there are enough Stochastic values for calculation
-  if (stochasticValues.length < 2) {
-      console.log("Insufficient Stochastic values for calculation");
-      return "HOLD";
-  }
 
-  let lastK = stochasticValues[stochasticValues.length - 1];
-  let prevK = stochasticValues[stochasticValues.length - 2];
+    // Ensure there are enough Stochastic values for calculation
+    if (stochasticValues.length < 1) {
+        console.log("Insufficient Stochastic values for calculation");
+        return "HOLD";
+    }
 
-  console.log("Last Stochastic Value:", lastK);
-  console.log("Previous Stochastic Value:", prevK);
-  console.log("Latest RSI Values:", latestRSIValues);
+    let lastK = stochasticValues[stochasticValues.length - 1]; // Last Stochastic value
 
-  // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
-  const isRSIBuy = latestRSIValues.some(rsi => rsi < 45); // At least one RSI value below 45
-  const isRSISell = latestRSIValues.some(rsi => rsi > 55); // At least one RSI value above 55
+    console.log("Last Stochastic Value:", lastK);
+    console.log("Latest RSI Values:", latestRSIValues);
 
-  // Update state variables based on Stochastic values
-  if (prevK <= 80 && lastK > 80) {
-      isStochasticAbove80 = true; // Stochastic crossed above 80
-  }
-  if (prevK >= 20 && lastK < 20) {
-      isStochasticBelow20 = true; // Stochastic crossed below 20
-  }
+    // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
+    const isRSIBuy = latestRSIValues.some(rsi => rsi < 45); // At least one RSI value below 45
+    const isRSISell = latestRSIValues.some(rsi => rsi > 55); // At least one RSI value above 55
 
-  // Buy Signal: Stochastic crosses back above 20 after being below 20, and RSI condition is met
-  if (isStochasticBelow20 && prevK < 20 && lastK >= 20 && isRSIBuy) {
-      console.log("BUY Signal Triggered");
-      isStochasticBelow20 = false; // Reset the state
-      return "BUY";
-  }
+    // Update state variables based on Stochastic values
+    if (lastK > 80) {
+        isStochasticAbove80 = true; // Stochastic crossed above 80
+        console.log("Stochastic crossed above 80");
+    }
+    if (lastK < 20) {
+        isStochasticBelow20 = true; // Stochastic crossed below 20
+        console.log("Stochastic crossed below 20");
+    }
 
-  // Sell Signal: Stochastic crosses back below 80 after being above 80, and RSI condition is met
-  if (isStochasticAbove80 && prevK > 80 && lastK <= 80 && isRSISell) {
-      console.log("SELL Signal Triggered");
-      isStochasticAbove80 = false; // Reset the state
-      return "SELL";
-  }
+    // Buy Signal: Stochastic crosses back above 20 after being below 20, and RSI condition is met
+    if (isStochasticBelow20 && lastK >= 20 && isRSIBuy) {
+        console.log("BUY Signal Triggered");
+        isStochasticBelow20 = false; // Reset the state
+        return "BUY";
+    }
 
-  // Default to HOLD
-  console.log("HOLD Signal");
-  return "HOLD";
+    // Sell Signal: Stochastic crosses back below 80 after being above 80, and RSI condition is met
+    if (isStochasticAbove80 && lastK <= 80 && isRSISell) {
+        console.log("SELL Signal Triggered");
+        isStochasticAbove80 = false; // Reset the state
+        return "SELL";
+    }
+
+    // Default to HOLD
+    console.log("HOLD Signal");
+    return "HOLD";
 }
 
 // Function to place trade on WebSocket
