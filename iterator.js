@@ -186,8 +186,8 @@ function checkTradeSignal(stochasticValues, latestRSIValues) {
     console.log("Latest RSI Values:", latestRSIValues);
 
     // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
-    const isRSIBuy = latestRSIValues.some(rsi => rsi < 40); // At least one RSI value below 40
-    const isRSISell = latestRSIValues.some(rsi => rsi > 60); // At least one RSI value above 60
+    const isRSIBuy = latestRSIValues.some(rsi => rsi < 45); // At least one RSI value below 45
+    const isRSISell = latestRSIValues.some(rsi => rsi > 55); // At least one RSI value above 55
 
     // Update state variables based on Stochastic values
     if (prevK <= 80 && lastK > 80) {
