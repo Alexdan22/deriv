@@ -178,42 +178,48 @@ function calculateRSI(prices, period = 84) {
 }
 // Function to check for trade signals based on strategy
 function checkTradeSignal(stochasticValues, latestRSIValues) {
-    let lastK = stochasticValues[stochasticValues.length - 1];
-    let prevK = stochasticValues[stochasticValues.length - 2];
+  // Ensure there are enough Stochastic values for calculation
+  if (stochasticValues.length < 2) {
+      console.log("Insufficient Stochastic values for calculation");
+      return "HOLD";
+  }
 
-    console.log("Last Stochastic Value:", lastK);
-    console.log("Previous Stochastic Value:", prevK);
-    console.log("Latest RSI Values:", latestRSIValues);
+  let lastK = stochasticValues[stochasticValues.length - 1];
+  let prevK = stochasticValues[stochasticValues.length - 2];
 
-    // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
-    const isRSIBuy = latestRSIValues.some(rsi => rsi < 45); // At least one RSI value below 45
-    const isRSISell = latestRSIValues.some(rsi => rsi > 55); // At least one RSI value above 55
+  console.log("Last Stochastic Value:", lastK);
+  console.log("Previous Stochastic Value:", prevK);
+  console.log("Latest RSI Values:", latestRSIValues);
 
-    // Update state variables based on Stochastic values
-    if (prevK <= 80 && lastK > 80) {
-        isStochasticAbove80 = true; // Stochastic crossed above 80
-    }
-    if (prevK >= 20 && lastK < 20) {
-        isStochasticBelow20 = true; // Stochastic crossed below 20
-    }
+  // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
+  const isRSIBuy = latestRSIValues.some(rsi => rsi < 45); // At least one RSI value below 45
+  const isRSISell = latestRSIValues.some(rsi => rsi > 55); // At least one RSI value above 55
 
-    // Buy Signal: Stochastic crosses back above 20 after being below 20, and RSI condition is met
-    if (isStochasticBelow20 && prevK < 20 && lastK >= 20 && isRSIBuy) {
-        console.log("BUY Signal Triggered");
-        isStochasticBelow20 = false; // Reset the state
-        return "BUY";
-    }
+  // Update state variables based on Stochastic values
+  if (prevK <= 80 && lastK > 80) {
+      isStochasticAbove80 = true; // Stochastic crossed above 80
+  }
+  if (prevK >= 20 && lastK < 20) {
+      isStochasticBelow20 = true; // Stochastic crossed below 20
+  }
 
-    // Sell Signal: Stochastic crosses back below 80 after being above 80, and RSI condition is met
-    if (isStochasticAbove80 && prevK > 80 && lastK <= 80 && isRSISell) {
-        console.log("SELL Signal Triggered");
-        isStochasticAbove80 = false; // Reset the state
-        return "SELL";
-    }
+  // Buy Signal: Stochastic crosses back above 20 after being below 20, and RSI condition is met
+  if (isStochasticBelow20 && prevK < 20 && lastK >= 20 && isRSIBuy) {
+      console.log("BUY Signal Triggered");
+      isStochasticBelow20 = false; // Reset the state
+      return "BUY";
+  }
 
-    // Default to HOLD
-    console.log("HOLD Signal");
-    return "HOLD";
+  // Sell Signal: Stochastic crosses back below 80 after being above 80, and RSI condition is met
+  if (isStochasticAbove80 && prevK > 80 && lastK <= 80 && isRSISell) {
+      console.log("SELL Signal Triggered");
+      isStochasticAbove80 = false; // Reset the state
+      return "SELL";
+  }
+
+  // Default to HOLD
+  console.log("HOLD Signal");
+  return "HOLD";
 }
 
 // Function to place trade on WebSocket
@@ -393,51 +399,49 @@ const setProfit = async (ws, response) => {
 };
 
 const processMarketData = () => {
-    const now = DateTime.now().toSeconds(); // Current time in seconds
-    const fourteenMinutesAgo = now - (14 * 60); // 14 minutes ago in seconds
+  const now = DateTime.now().toSeconds(); // Current time in seconds
+  const fourteenMinutesAgo = now - (14 * 60); // 14 minutes ago in seconds
 
-    // Filter marketPrices to only include prices from the last 14 minutes
-    const recentPrices = marketPrices
-        .filter(price => price.timestamp >= fourteenMinutesAgo);
+  // Filter marketPrices to only include prices from the last 14 minutes
+  const recentPrices = marketPrices
+      .filter(price => price.timestamp >= fourteenMinutesAgo);
 
-    // Aggregate tick data into 1-minute OHLC candles
-    const ohlcData = aggregateOHLC(recentPrices);
+  // Aggregate tick data into 1-minute OHLC candles
+  const ohlcData = aggregateOHLC(recentPrices);
 
-    if (ohlcData.length < 84)return; // Ensure enough data for calculations
+  if (ohlcData.length < 84) return; // Ensure enough data for calculations
 
+  // Extract closing prices for RSI and Stochastic calculations
+  const closingPrices = ohlcData.map(candle => candle.close);
 
-    // Extract closing prices for RSI and Stochastic calculations
-    const closingPrices = ohlcData.map(candle => candle.close);
+  // Calculate Stochastic values
+  const stochasticValues = closingPrices.map((_, i) => calculateStochastic(closingPrices.slice(0, i + 1))).filter(v => v !== null);
 
-    const stochasticValues = closingPrices.map((_, i) => calculateStochastic(closingPrices.slice(0, i + 1))).filter(v => v !== null);
-    const rsi = calculateRSI(closingPrices);
+  // Keep only the last 14 values (or any other desired length)
+  if (stochasticValues.length > 14) {
+      stochasticValues.shift(); // Remove the oldest value
+  }
 
-    // Add the latest Stochastic value to the array
-    stochasticValues.push(calculateStochastic(closingPrices));
+  // Update the latest RSI values array
+  latestRSIValues.push(calculateRSI(closingPrices));
+  if (latestRSIValues.length > 6) {
+      latestRSIValues.shift(); // Keep only the latest 6 values
+  }
 
-    // Keep only the last 14 values (or any other desired length)
-    if (stochasticValues.length > 14) {
-        stochasticValues.shift(); // Remove the oldest value
-    }
-    // Update the latest RSI values array
-    latestRSIValues.push(rsi);
-    if (latestRSIValues.length > 6) {
-        latestRSIValues.shift(); // Keep only the latest 6 values
-    }
+  console.log("Stochastic Values Array:", stochasticValues);
 
+  const call = checkTradeSignal(stochasticValues, latestRSIValues);
 
-    const call = checkTradeSignal(stochasticValues, latestRSIValues);
-
-    if (call !== "HOLD") {
-        API_TOKENS.forEach(accountId => {
-            const ws = wsMap.get(accountId); // ✅ Use Map instead of array
-            if (ws.readyState === WebSocket.OPEN) {
-                placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
-            } else {
-                console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
-            }
-        });
-    }
+  if (call !== "HOLD") {
+      API_TOKENS.forEach(accountId => {
+          const ws = wsMap.get(accountId); // ✅ Use Map instead of array
+          if (ws.readyState === WebSocket.OPEN) {
+              placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
+          } else {
+              console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
+          }
+      });
+  }
 };
 
 
