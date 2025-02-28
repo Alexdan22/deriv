@@ -412,6 +412,13 @@ const processMarketData = () => {
     const stochasticValues = closingPrices.map((_, i) => calculateStochastic(closingPrices.slice(0, i + 1))).filter(v => v !== null);
     const rsi = calculateRSI(closingPrices);
 
+    // Add the latest Stochastic value to the array
+    stochasticValues.push(calculateStochastic(closingPrices));
+
+    // Keep only the last 14 values (or any other desired length)
+    if (stochasticValues.length > 14) {
+        stochasticValues.shift(); // Remove the oldest value
+    }
     // Update the latest RSI values array
     latestRSIValues.push(rsi);
     if (latestRSIValues.length > 6) {
@@ -558,8 +565,14 @@ const connectWebSocket = (apiToken) => {
   return ws;
 };
 
-// Example usage with mock data
-setInterval(processMarketData, 10000); // Process data every minute
+const now = new Date();
+const currentSeconds = now.getSeconds();
+const delay = (10 - (currentSeconds % 10)) * 1000; // Delay in milliseconds
+
+setTimeout(() => {
+  // Start the interval after the delay
+  setInterval(processMarketData, 10000); // Run every 10 seconds
+}, delay);
 
 
 
