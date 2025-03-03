@@ -197,7 +197,7 @@ function calculateEMA(prices, period) {
   return emaValues;
 }
 
-function checkTradeSignal(stochasticValues, latestRSIValues){
+function checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21){
       // Ensure there are enough Stochastic values for calculation
       if (stochasticValues.length < 1) {
         console.log("Insufficient Stochastic values for calculation");
