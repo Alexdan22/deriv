@@ -441,7 +441,7 @@ const setProfit = async (ws, response) => {
 
 const processMarketData = () => {
   const now = DateTime.now().toSeconds(); // Current time in seconds
-  const fourteenMinutesAgo = now - (14 * 60); // 14 minutes ago in seconds
+  const fourteenMinutesAgo = now - (22 * 60); // 14 minutes ago in seconds
 
   // Filter marketPrices to only include prices from the last 14 minutes
   const recentPrices = marketPrices
