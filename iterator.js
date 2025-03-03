@@ -450,7 +450,12 @@ const processMarketData = () => {
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData = aggregateOHLC(recentPrices);
 
-  if (ohlcData.length < 126) return; // Ensure enough data for calculations
+  if (ohlcData.length < 126){
+    console.log("Insufficient data for calculations");
+    console.log("OHLC Data Length:", ohlcData.length);
+    
+    return; // Ensure enough data for calculations
+  } 
 
   // Extract closing prices for RSI and Stochastic calculations
   const closingPrices = ohlcData.map(candle => candle.close);
@@ -551,7 +556,7 @@ const connectWebSocket = (apiToken) => {
 
                 // Keep only the last 14 minutes of data
                 const now = DateTime.now().toSeconds(); // Current time in seconds
-                const fourteenMinutesAgo = now - (14 * 60); // 14 minutes ago in seconds
+                const fourteenMinutesAgo = now - (22 * 60); // 14 minutes ago in seconds
 
                 // Filter out old data
                 marketPrices = marketPrices.filter(price => price.timestamp >= fourteenMinutesAgo);
