@@ -89,8 +89,11 @@ let marketPrices = [];
 let latestRSIValues = []; // Array to store the latest 6 RSI values
 let isStochasticAbove80 = false; // Tracks if Stochastic has crossed above 80
 let isStochasticBelow20 = false; // Tracks if Stochastic has crossed below 20
+let isStochasticAbove20 = false; // Tracks if Stochastic has crossed above 60
+let isStochasticBelow80 = false; // Tracks if Stochastic has crossed below 40
 let wsMap = new Map(); // Store WebSocket connections
 let tradeInProgress = false; // Flag to prevent multiple trades
+const tradeConditions = new Map();
 
 
 const sendToWebSocket = (ws, data) => {
@@ -177,10 +180,26 @@ function calculateRSI(prices, period = 84) {
     return rsi;
 }
 
-function checkTradeSignal(stochasticValues, latestRSIValues) {
+function calculateEMA(prices, period) {
+  const smoothingFactor = 2 / (period + 1); // Smoothing factor for EMA
+  let emaValues = [];
 
-    // Ensure there are enough Stochastic values for calculation
-    if (stochasticValues.length < 1) {
+  // Calculate the initial SMA as the first EMA value
+  let sma = prices.slice(0, period).reduce((sum, price) => sum + price, 0) / period;
+  emaValues.push(sma);
+
+  // Calculate EMA for the remaining prices
+  for (let i = period; i < prices.length; i++) {
+      const ema = (prices[i] * smoothingFactor) + (emaValues[i - period] * (1 - smoothingFactor));
+      emaValues.push(ema);
+  }
+
+  return emaValues;
+}
+
+function checkTradeSignal(stochasticValues, latestRSIValues){
+      // Ensure there are enough Stochastic values for calculation
+      if (stochasticValues.length < 1) {
         console.log("Insufficient Stochastic values for calculation");
         return "HOLD";
     }
@@ -191,31 +210,50 @@ function checkTradeSignal(stochasticValues, latestRSIValues) {
     console.log("Latest RSI Values:", latestRSIValues);
 
     // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
-    const isRSIBuy = latestRSIValues.some(rsi => rsi < 45); // At least one RSI value below 45
-    const isRSISell = latestRSIValues.some(rsi => rsi > 55); // At least one RSI value above 55
-    const isRSIBuyLimit = latestRSIValues.some(rsi => rsi < 30); // At least one RSI value below 30
-    const isRSISellLimit = latestRSIValues.some(rsi => rsi > 70); // At least one RSI value above 70
+    const isRSIBuy = latestRSIValues.some(rsi => rsi < 55); // At least one RSI value below 45
+    const isRSISell = latestRSIValues.some(rsi => rsi > 45); // At least one RSI value above 55
+    const isRSIBuyLimit = latestRSIValues.some(rsi => rsi < 60); // At least one RSI value below 30
+    const isRSISellLimit = latestRSIValues.some(rsi => rsi > 40); // At least one RSI value above 70
+    let lastEma9 = ema9[ema9.length - 1]; // Latest EMA 9 value
+    let lastEma14 = ema14[ema14.length - 1]; // Latest EMA 14 value
+    let lastEma21 = ema21[ema21.length - 1]; // Latest EMA 21 value
 
-    // Update state variables based on Stochastic values
+
+    // Update first stage state variables based on Stochastic values
     if (lastK > 80) {
         isStochasticAbove80 = true; // Stochastic crossed above 80
         console.log("Stochastic crossed above 80");
     }
-    if (lastK < 20) {
+    if (lastK < 80) {
+        isStochasticBelow80 = true; // Stochastic crossed below 80
+        console.log("Stochastic crossed below 80");
+    }
+    // Update second stage state variables based on Stochastic values
+    if (lastK < 20 && isStochasticAbove80) {
+      isStochasticAbove20 = true; // Stochastic crossed above 20
+      console.log("Stochastic crossed above 20");
+    }
+    if (lastK < 20 && isStochasticBelow20) {
         isStochasticBelow20 = true; // Stochastic crossed below 20
         console.log("Stochastic crossed below 20");
     }
 
     // Buy Signal: Stochastic crosses back above 20 after being below 20, and RSI condition is met
-    if (isStochasticBelow20 && lastK >= 20 && isRSIBuy && !isRSIBuyLimit) {
+    if (isStochasticBelow80 && isStochasticAbove80 && lastK >= 80 && isRSIBuy && !isRSIBuyLimit && lastEma9 > lastEma14 && lastEma14 > lastEma21) {
         console.log("BUY Signal Triggered");
-        isStochasticBelow20 = false; // Reset the state
+        isStochasticAbove20 = false;
+        isStochasticBelow20 = false;
+        isStochasticBelow80 = false;
+        isStochasticAbove80 = false; // Reset the state
         return "BUY";
     }
 
     // Sell Signal: Stochastic crosses back below 80 after being above 80, and RSI condition is met
-    if (isStochasticAbove80 && lastK <= 80 && isRSISell && !isRSIBuyLimit) {
+    if (isStochasticAbove80 && lastK <= 80 && isRSISell && !isRSISellLimit && lastEma9 < lastEma14 && lastEma14 < lastEma21) {
         console.log("SELL Signal Triggered");
+        isStochasticAbove20 = false;
+        isStochasticBelow20 = false;
+        isStochasticBelow80 = false;
         isStochasticAbove80 = false; // Reset the state
         return "SELL";
     }
@@ -412,7 +450,7 @@ const processMarketData = () => {
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData = aggregateOHLC(recentPrices);
 
-  if (ohlcData.length < 84) return; // Ensure enough data for calculations
+  if (ohlcData.length < 126) return; // Ensure enough data for calculations
 
   // Extract closing prices for RSI and Stochastic calculations
   const closingPrices = ohlcData.map(candle => candle.close);
@@ -425,15 +463,22 @@ const processMarketData = () => {
       stochasticValues.shift(); // Remove the oldest value
   }
 
+  // Calculate EMA values
+  const ema9 = calculateEMA(closingPrices, 54); // EMA for 9 periods
+  const ema14 = calculateEMA(closingPrices, 84); // EMA for 14 periods
+  const ema21 = calculateEMA(closingPrices, 126); // EMA for 21 periods
+
   // Update the latest RSI values array
   latestRSIValues.push(calculateRSI(closingPrices));
   if (latestRSIValues.length > 6) {
       latestRSIValues.shift(); // Keep only the latest 6 values
   }
 
-  console.log("Stochastic Values Array:", stochasticValues);
+  console.log("EMA 9:", ema9[ema9.length - 1]); // Latest EMA 9 value
+  console.log("EMA 14:", ema14[ema14.length - 1]); // Latest EMA 14 value
+  console.log("EMA 21:", ema21[ema21.length - 1]); // Latest EMA 21 value
 
-  const call = checkTradeSignal(stochasticValues, latestRSIValues);
+  const call = checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21);
 
   if (call !== "HOLD") {
       API_TOKENS.forEach(accountId => {
@@ -571,6 +616,32 @@ const connectWebSocket = (apiToken) => {
 
   return ws;
 };
+
+app.post('/webhook', async (req, res) => {
+  const { symbol, call, message } = req.body;
+  
+  if (!symbol || !call || !message) {
+    return res.status(400).send('Invalid payload');
+  }
+
+  if (!tradeConditions.has(symbol)) {
+    tradeConditions.set(symbol, {
+      zone: call,
+    });
+  } 
+
+  const assetConditions = tradeConditions.get(symbol);
+
+  // Update the asset-wide condition
+  switch (message) {
+    case 'ZONE': 
+      assetConditions.zone = call;
+      break;
+  }
+  
+    
+  res.send('Signal processed');
+});
 
 const now = new Date();
 const currentSeconds = now.getSeconds();
