@@ -216,6 +216,13 @@ function checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21)
     let lastEma14 = ema14[ema14.length - 1]; // Latest EMA 14 value
     let lastEma21 = ema21[ema21.length - 1]; // Latest EMA 21 value
 
+    if(lastEma9 > lastEma14 && lastEma14 > lastEma21){
+      console.log("Uptrend detected");
+    }
+    if(lastEma9 < lastEma14 && lastEma14 < lastEma21){
+      console.log("Downtrend detected");
+    }
+
 
     // Update first stage state variables based on Stochastic values
     if (lastK > 80) {
