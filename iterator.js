@@ -210,10 +210,8 @@ function checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21)
     console.log("Latest RSI Values:", latestRSIValues);
 
     // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
-    const isRSIBuy = latestRSIValues.some(rsi => rsi < 55); // At least one RSI value below 45
-    const isRSISell = latestRSIValues.some(rsi => rsi > 45); // At least one RSI value above 55
-    const isRSIBuyLimit = latestRSIValues.some(rsi => rsi < 60); // At least one RSI value below 30
-    const isRSISellLimit = latestRSIValues.some(rsi => rsi > 40); // At least one RSI value above 70
+    const isRSIBuy = latestRSIValues.some(rsi => rsi > 50); // At least one RSI value below 45
+    const isRSISell = latestRSIValues.some(rsi => rsi < 50); // At least one RSI value above 55
     let lastEma9 = ema9[ema9.length - 1]; // Latest EMA 9 value
     let lastEma14 = ema14[ema14.length - 1]; // Latest EMA 14 value
     let lastEma21 = ema21[ema21.length - 1]; // Latest EMA 21 value
@@ -239,7 +237,7 @@ function checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21)
     }
 
     // Buy Signal: Stochastic crosses back above 20 after being below 20, and RSI condition is met
-    if (isStochasticBelow80 && isStochasticAbove80 && lastK >= 80 && isRSIBuy && !isRSIBuyLimit && lastEma9 > lastEma14 && lastEma14 > lastEma21) {
+    if (isStochasticBelow80 && isStochasticAbove80 && lastK >= 80 && isRSIBuy && lastEma9 > lastEma14 && lastEma14 > lastEma21) {
         console.log("BUY Signal Triggered");
         isStochasticAbove20 = false;
         isStochasticBelow20 = false;
@@ -249,7 +247,7 @@ function checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21)
     }
 
     // Sell Signal: Stochastic crosses back below 80 after being above 80, and RSI condition is met
-    if (isStochasticAbove80 && lastK <= 80 && isRSISell && !isRSISellLimit && lastEma9 < lastEma14 && lastEma14 < lastEma21) {
+    if (isStochasticAbove80 && lastK <= 80 && isRSISell && lastEma9 < lastEma14 && lastEma14 < lastEma21) {
         console.log("SELL Signal Triggered");
         isStochasticAbove20 = false;
         isStochasticBelow20 = false;
