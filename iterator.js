@@ -14,7 +14,7 @@ app.use(bodyParser.json());
 
 mongoose.set('strictQuery', false);
 // mongoose.connect("mongodb://localhost:27017/mysteryDB");
-mongoose.connect("mongodb+srv://alex-dan:Admin-12345@cluster0.wirm8.mongodb.net/mysteryDB");
+mongoose.connect(process.env.MONGO_URI);
 
 const profitSchema = new mongoose.Schema({
   email: String,
@@ -85,12 +85,15 @@ const accountTrades = new Map(); // Store trades for each account
 
 const WEBSOCKET_URL = 'wss://ws.derivws.com/websockets/v3?app_id=67402';
 const PING_INTERVAL = 30000;
-let marketPrices = [];
+let marketPrices = []; // Global variable to store historical data
 let latestRSIValues = []; // Array to store the latest 6 RSI values
-let isStochasticAbove80 = false; // Tracks if Stochastic has crossed above 80
-let isStochasticBelow20 = false; // Tracks if Stochastic has crossed below 20
-let isStochasticAbove20 = false; // Tracks if Stochastic has crossed above 60
-let isStochasticBelow80 = false; // Tracks if Stochastic has crossed below 40
+// State variables for BUY condition
+let hasCrossedAbove80 = false; // Tracks if Stochastic has crossed above 80
+let hasDroppedBelow80 = false; // Tracks if Stochastic has dropped below 80 after crossing above 80
+
+// State variables for SELL condition
+let hasCrossedBelow20 = false; // Tracks if Stochastic has crossed below 20
+let hasRisenAbove20 = false; // Tracks if Stochastic has risen above 20 after crossing below 20
 let wsMap = new Map(); // Store WebSocket connections
 let tradeInProgress = false; // Flag to prevent multiple trades
 const tradeConditions = new Map();
@@ -105,40 +108,50 @@ const sendToWebSocket = (ws, data) => {
 // ---------------------------------- Trade Execution ----------------------------------
 
 
+
+
+
 // Function to aggregate OHLC data from tick data
-function aggregateOHLC(prices) {
-    const ohlcData = [];
-    const groupedByTenSeconds = {};
+const aggregateOHLC = (ticks, granularity = 10) => {
+  const candles = [];
+  let currentCandle = null;
 
-    // Group prices by 10-second intervals
-    prices.forEach(price => {
-        const tenSecondTimestamp = Math.floor(price.timestamp / 10) * 10; // Round to the nearest 10 seconds
-        if (!groupedByTenSeconds[tenSecondTimestamp]) {
-            groupedByTenSeconds[tenSecondTimestamp] = [];
-        }
-        groupedByTenSeconds[tenSecondTimestamp].push(price.price);
-    });
+  ticks.forEach(tick => {
+    const timestamp = tick.timestamp;
+    const price = tick.price;
 
-    // Calculate OHLC for each 10-second interval
-    for (const [timestamp, pricesInTenSeconds] of Object.entries(groupedByTenSeconds)) {
-        if (pricesInTenSeconds.length > 0) {
-            const open = pricesInTenSeconds[0];
-            const high = Math.max(...pricesInTenSeconds);
-            const low = Math.min(...pricesInTenSeconds);
-            const close = pricesInTenSeconds[pricesInTenSeconds.length - 1];
+    // Calculate the start of the current candle
+    const candleStart = Math.floor(timestamp / granularity) * granularity;
 
-            ohlcData.push({
-                timestamp: parseInt(timestamp),
-                open,
-                high,
-                low,
-                close
-            });
-        }
+    // If the current candle doesn't exist or belongs to a new interval, create a new candle
+    if (!currentCandle || currentCandle.timestamp !== candleStart) {
+      if (currentCandle) {
+        candles.push(currentCandle); // Save the previous candle
+      }
+
+      // Create a new candle
+      currentCandle = {
+        timestamp: candleStart,
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+      };
+    } else {
+      // Update the current candle
+      currentCandle.high = Math.max(currentCandle.high, price);
+      currentCandle.low = Math.min(currentCandle.low, price);
+      currentCandle.close = price;
     }
+  });
 
-    return ohlcData;
-}
+  // Add the last candle if it exists
+  if (currentCandle) {
+    candles.push(currentCandle);
+  }
+
+  return candles;
+};
 
 
 // Modify the `calculateStochastic` and `calculateRSI` functions to work with the 14-minute window
@@ -197,75 +210,78 @@ function calculateEMA(prices, period) {
   return emaValues;
 }
 
-function checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21){
-      // Ensure there are enough Stochastic values for calculation
-      if (stochasticValues.length < 1) {
-        console.log("Insufficient Stochastic values for calculation");
-        return "HOLD";
-    }
-
-    let lastK = stochasticValues[stochasticValues.length - 1]; // Last Stochastic value
-
-    console.log("Last Stochastic Value:", lastK);
-    console.log("Latest RSI Values:", latestRSIValues);
-
-    // Check if any of the latest RSI values are below 40 (for BUY) or above 60 (for SELL)
-    const isRSIBuy = latestRSIValues.some(rsi => rsi > 50); // At least one RSI value below 45
-    const isRSISell = latestRSIValues.some(rsi => rsi < 50); // At least one RSI value above 55
-    let lastEma9 = ema9[ema9.length - 1]; // Latest EMA 9 value
-    let lastEma14 = ema14[ema14.length - 1]; // Latest EMA 14 value
-    let lastEma21 = ema21[ema21.length - 1]; // Latest EMA 21 value
-
-    if(lastEma9 > lastEma14 && lastEma14 > lastEma21){
-      console.log("Uptrend detected");
-    }
-    if(lastEma9 < lastEma14 && lastEma14 < lastEma21){
-      console.log("Downtrend detected");
-    }
-
-
-    // Update first stage state variables based on Stochastic values
-    if (lastK > 80) {
-        isStochasticAbove80 = true; // Stochastic crossed above 80
-        console.log("Stochastic crossed above 80");
-    }
-    if (lastK < 80) {
-        isStochasticBelow80 = true; // Stochastic crossed below 80
-        console.log("Stochastic crossed below 80");
-    }
-    // Update second stage state variables based on Stochastic values
-    if (lastK < 20 && isStochasticAbove80) {
-      isStochasticAbove20 = true; // Stochastic crossed above 20
-      console.log("Stochastic crossed above 20");
-    }
-    if (lastK < 20 && isStochasticBelow20) {
-        isStochasticBelow20 = true; // Stochastic crossed below 20
-        console.log("Stochastic crossed below 20");
-    }
-
-    // Buy Signal: Stochastic crosses back above 20 after being below 20, and RSI condition is met
-    if (isStochasticBelow80 && isStochasticAbove80 && lastK >= 80 && isRSIBuy && lastEma9 > lastEma14 && lastEma14 > lastEma21) {
-        console.log("BUY Signal Triggered");
-        isStochasticAbove20 = false;
-        isStochasticBelow20 = false;
-        isStochasticBelow80 = false;
-        isStochasticAbove80 = false; // Reset the state
-        return "BUY";
-    }
-
-    // Sell Signal: Stochastic crosses back below 80 after being above 80, and RSI condition is met
-    if (isStochasticAbove80 && lastK <= 80 && isRSISell && lastEma9 < lastEma14 && lastEma14 < lastEma21) {
-        console.log("SELL Signal Triggered");
-        isStochasticAbove20 = false;
-        isStochasticBelow20 = false;
-        isStochasticBelow80 = false;
-        isStochasticAbove80 = false; // Reset the state
-        return "SELL";
-    }
-
-    // Default to HOLD
-    console.log("HOLD Signal");
+function checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21) {
+  if (stochasticValues.length < 1) {
+    console.log("Insufficient Stochastic values for calculation");
     return "HOLD";
+  }
+
+  const lastK = stochasticValues[stochasticValues.length - 1]; // Latest Stochastic value
+
+  console.log("Last Stochastic Value:", lastK);
+  console.log("Latest RSI Values:", latestRSIValues);
+
+  // Update state variables for BUY condition
+  if (lastK > 80 && !hasCrossedAbove80) {
+    hasCrossedAbove80 = true; // Stochastic has crossed above 80
+    console.log("Stochastic crossed above 80");
+  }
+
+  if (hasCrossedAbove80 && lastK < 80 && !hasDroppedBelow80) {
+    hasDroppedBelow80 = true; // Stochastic has dropped below 80 after crossing above 80
+    console.log("Stochastic dropped below 80 after crossing above 80");
+  }
+
+  if (hasCrossedAbove80 && hasDroppedBelow80 && lastK > 80) {
+    // Stochastic has risen back above 80 after dropping below 80
+    console.log("Stochastic rose back above 80 after dropping below 80");
+
+    // Reset state variables for the next cycle
+    hasCrossedAbove80 = false;
+    hasDroppedBelow80 = false;
+
+    // Check additional conditions (e.g., RSI, EMA) before placing a BUY trade
+    const isRSIBuy = latestRSIValues.some(rsi => rsi > 52.5); // Example RSI condition
+    const isEMAUptrend = ema9[ema9.length - 1] > ema14[ema14.length - 1] && ema14[ema14.length - 1] > ema21[ema21.length - 1]; // EMA uptrend
+
+    if (isRSIBuy && isEMAUptrend) {
+      console.log("BUY Signal Triggered");
+      return "BUY";
+    }
+  }
+
+  // Update state variables for SELL condition
+  if (lastK < 20 && !hasCrossedBelow20) {
+    hasCrossedBelow20 = true; // Stochastic has crossed below 20
+    console.log("Stochastic crossed below 20");
+  }
+
+  if (hasCrossedBelow20 && lastK > 20 && !hasRisenAbove20) {
+    hasRisenAbove20 = true; // Stochastic has risen above 20 after crossing below 20
+    console.log("Stochastic rose above 20 after crossing below 20");
+  }
+
+  if (hasCrossedBelow20 && hasRisenAbove20 && lastK < 20) {
+    // Stochastic has dropped back below 20 after rising above 20
+    console.log("Stochastic dropped back below 20 after rising above 20");
+
+    // Reset state variables for the next cycle
+    hasCrossedBelow20 = false;
+    hasRisenAbove20 = false;
+
+    // Check additional conditions (e.g., RSI, EMA) before placing a SELL trade
+    const isRSISell = latestRSIValues.some(rsi => rsi < 48.5); // Example RSI condition
+    const isEMADowntrend = ema9[ema9.length - 1] < ema14[ema14.length - 1] && ema14[ema14.length - 1] < ema21[ema21.length - 1]; // EMA downtrend
+
+    if (isRSISell && isEMADowntrend) {
+      console.log("SELL Signal Triggered");
+      return "SELL";
+    }
+  }
+
+  // Default to HOLD
+  console.log("HOLD Signal");
+  return "HOLD";
 }
 
 // Function to place trade on WebSocket
@@ -463,7 +479,7 @@ const processMarketData = () => {
   } 
 
   // Extract closing prices for RSI and Stochastic calculations
-  const closingPrices = ohlcData.map(candle => candle.close);
+  const closingPrices = marketPrices.map(price => price.price);
 
   // Calculate Stochastic values
   const stochasticValues = closingPrices.map((_, i) => calculateStochastic(closingPrices.slice(0, i + 1))).filter(v => v !== null);
@@ -491,14 +507,20 @@ const processMarketData = () => {
   const call = checkTradeSignal(stochasticValues, latestRSIValues, ema9, ema14, ema21);
 
   if (call !== "HOLD") {
-      API_TOKENS.forEach(accountId => {
-          const ws = wsMap.get(accountId); // ✅ Use Map instead of array
-          if (ws.readyState === WebSocket.OPEN) {
-              placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
-          } else {
-              console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
-          }
-      });
+    // Reset state variables after placing a trade
+    hasCrossedAbove80 = false;
+    hasDroppedBelow80 = false;
+    hasCrossedBelow20 = false;
+    hasRisenAbove20 = false;
+  
+    API_TOKENS.forEach(accountId => {
+      const ws = wsMap.get(accountId);
+      if (ws.readyState === WebSocket.OPEN) {
+        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
+      } else {
+        console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
+      }
+    });
   }
 };
 
@@ -511,6 +533,7 @@ const createWebSocketConnections = async () => {
   const allTokens = await getAllApiTokens();
   console.log("✅ Final API Tokens:", allTokens);
 
+  // Create WebSocket connections for each account
   allTokens.forEach(apiToken => {
     if (!wsMap.has(apiToken)) {
       wsMap.set(apiToken, connectWebSocket(apiToken)); // Store WebSocket
@@ -524,8 +547,12 @@ const connectWebSocket = (apiToken) => {
 
   let pingInterval;
 
-  ws.on('open', () => {
+  ws.on('open', async() => {
+    // Authorize the connection
     sendToWebSocket(ws, { authorize: apiToken });
+
+
+    // Subscribe to live ticks
     sendToWebSocket(ws, { ticks: "frxXAUUSD" });
 
     if (pingInterval) clearInterval(pingInterval);
@@ -553,20 +580,24 @@ const connectWebSocket = (apiToken) => {
         
         case "tick":
             try {
-                // Store the price and timestamp in the marketPrices array
-                marketPrices.push({
-                    price: response.tick.quote,
-                    timestamp: response.tick.epoch // Unix epoch time in seconds
-                });
+                // Extract the new tick data
+                const newTick = {
+                  price: response.tick.quote,
+                  timestamp: response.tick.epoch,
+                };
 
-                // Keep only the last 14 minutes of data
-                const now = DateTime.now().toSeconds(); // Current time in seconds
-                const fourteenMinutesAgo = now - (22 * 60); // 14 minutes ago in seconds
+                // Check if a tick with the same timestamp already exists
+                const isDuplicate = marketPrices.some(tick => tick.timestamp === newTick.timestamp);
 
-                // Filter out old data
-                marketPrices = marketPrices.filter(price => price.timestamp >= fourteenMinutesAgo);
+                if (!isDuplicate) {
+                  // Append the new tick to the marketPrices array
+                  marketPrices.push(newTick);
 
-                // Debug log to check the number of prices in the last 14 minutes
+                  // Keep only the last 1260 ticks (10 seconds * 126 = 1260 ticks for 21 minutes)
+                  if (marketPrices.length > 1260) {
+                    marketPrices.shift(); // Remove the oldest tick
+                  }
+                }
             } catch (error) {
                 console.error(`[${apiToken}] Tick failed:`, error);
             }
@@ -586,6 +617,10 @@ const connectWebSocket = (apiToken) => {
             }
           }
           break;
+
+        case "history":
+          // Historical data is already handled in initializeMarketData
+          break;  
 
         case "proposal_open_contract":
           const contract = response.proposal_open_contract;
@@ -669,8 +704,9 @@ setTimeout(() => {
 
 
 
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
-    createWebSocketConnections();
-  });
-  
+app.listen(3000, async () => {
+  console.log('Server running on port 3000');
+
+  // Create WebSocket connections
+  createWebSocketConnections();
+});
