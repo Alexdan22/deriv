@@ -39,13 +39,6 @@ const profitSchema = new mongoose.Schema({
   date: String,
   uniqueDate: String
 });
-const variableSchema = new mongoose.Schema({
-  variables:{
-    zone: String,
-    condition: String
-  },
-  symbol: String
-});
 const apiTokenSchema = new mongoose.Schema({
   apiToken: String,
   email: String,
@@ -85,7 +78,7 @@ const accountTrades = new Map(); // Store trades for each account
 
 const WEBSOCKET_URL = 'wss://ws.derivws.com/websockets/v3?app_id=67402';
 const PING_INTERVAL = 30000;
-let marketPrices = []; // Global variable to store historical data
+let marketPrices = [];
 let latestRSIValues = []; // Array to store the latest 6 RSI values
 // State variables for BUY condition
 let hasCrossedAbove80 = false; // Tracks if Stochastic has crossed above 80
@@ -108,50 +101,40 @@ const sendToWebSocket = (ws, data) => {
 // ---------------------------------- Trade Execution ----------------------------------
 
 
-
-
-
 // Function to aggregate OHLC data from tick data
-const aggregateOHLC = (ticks, granularity = 10) => {
-  const candles = [];
-  let currentCandle = null;
+function aggregateOHLC(prices) {
+    const ohlcData = [];
+    const groupedByTenSeconds = {};
 
-  ticks.forEach(tick => {
-    const timestamp = tick.timestamp;
-    const price = tick.price;
+    // Group prices by 10-second intervals
+    prices.forEach(price => {
+        const tenSecondTimestamp = Math.floor(price.timestamp / 10) * 10; // Round to the nearest 10 seconds
+        if (!groupedByTenSeconds[tenSecondTimestamp]) {
+            groupedByTenSeconds[tenSecondTimestamp] = [];
+        }
+        groupedByTenSeconds[tenSecondTimestamp].push(price.price);
+    });
 
-    // Calculate the start of the current candle
-    const candleStart = Math.floor(timestamp / granularity) * granularity;
+    // Calculate OHLC for each 10-second interval
+    for (const [timestamp, pricesInTenSeconds] of Object.entries(groupedByTenSeconds)) {
+        if (pricesInTenSeconds.length > 0) {
+            const open = pricesInTenSeconds[0];
+            const high = Math.max(...pricesInTenSeconds);
+            const low = Math.min(...pricesInTenSeconds);
+            const close = pricesInTenSeconds[pricesInTenSeconds.length - 1];
 
-    // If the current candle doesn't exist or belongs to a new interval, create a new candle
-    if (!currentCandle || currentCandle.timestamp !== candleStart) {
-      if (currentCandle) {
-        candles.push(currentCandle); // Save the previous candle
-      }
-
-      // Create a new candle
-      currentCandle = {
-        timestamp: candleStart,
-        open: price,
-        high: price,
-        low: price,
-        close: price,
-      };
-    } else {
-      // Update the current candle
-      currentCandle.high = Math.max(currentCandle.high, price);
-      currentCandle.low = Math.min(currentCandle.low, price);
-      currentCandle.close = price;
+            ohlcData.push({
+                timestamp: parseInt(timestamp),
+                open,
+                high,
+                low,
+                close
+            });
+        }
     }
-  });
 
-  // Add the last candle if it exists
-  if (currentCandle) {
-    candles.push(currentCandle);
-  }
-
-  return candles;
-};
+    return ohlcData;
+}
 
 
 // Modify the `calculateStochastic` and `calculateRSI` functions to work with the 14-minute window
@@ -462,11 +445,11 @@ const setProfit = async (ws, response) => {
 
 const processMarketData = () => {
   const now = DateTime.now().toSeconds(); // Current time in seconds
-  const fourteenMinutesAgo = now - (22 * 60); // 14 minutes ago in seconds
+  const twentytwoMinutesAgo = now - (22 * 60); // 14 minutes ago in seconds
 
   // Filter marketPrices to only include prices from the last 14 minutes
   const recentPrices = marketPrices
-      .filter(price => price.timestamp >= fourteenMinutesAgo);
+      .filter(price => price.timestamp >= twentytwoMinutesAgo);
 
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData = aggregateOHLC(recentPrices);
@@ -479,7 +462,7 @@ const processMarketData = () => {
   } 
 
   // Extract closing prices for RSI and Stochastic calculations
-  const closingPrices = marketPrices.map(price => price.price);
+  const closingPrices = ohlcData.map(candle => candle.close);
 
   // Calculate Stochastic values
   const stochasticValues = closingPrices.map((_, i) => calculateStochastic(closingPrices.slice(0, i + 1))).filter(v => v !== null);
@@ -533,7 +516,6 @@ const createWebSocketConnections = async () => {
   const allTokens = await getAllApiTokens();
   console.log("✅ Final API Tokens:", allTokens);
 
-  // Create WebSocket connections for each account
   allTokens.forEach(apiToken => {
     if (!wsMap.has(apiToken)) {
       wsMap.set(apiToken, connectWebSocket(apiToken)); // Store WebSocket
@@ -547,12 +529,8 @@ const connectWebSocket = (apiToken) => {
 
   let pingInterval;
 
-  ws.on('open', async() => {
-    // Authorize the connection
+  ws.on('open', () => {
     sendToWebSocket(ws, { authorize: apiToken });
-
-
-    // Subscribe to live ticks
     sendToWebSocket(ws, { ticks: "frxXAUUSD" });
 
     if (pingInterval) clearInterval(pingInterval);
@@ -580,6 +558,8 @@ const connectWebSocket = (apiToken) => {
         
         case "tick":
             try {
+                const now = DateTime.now().toSeconds(); // Current time in seconds
+                const twentytwoMinutesAgo = now - (22 * 60); // 22 minutes ago in seconds
                 // Extract the new tick data
                 const newTick = {
                   price: response.tick.quote,
@@ -592,12 +572,13 @@ const connectWebSocket = (apiToken) => {
                 if (!isDuplicate) {
                   // Append the new tick to the marketPrices array
                   marketPrices.push(newTick);
-
-                  // Keep only the last 1260 ticks (10 seconds * 126 = 1260 ticks for 21 minutes)
-                  if (marketPrices.length > 1260) {
-                    marketPrices.shift(); // Remove the oldest tick
-                  }
+                  
+                // Filter out old data
+                marketPrices = marketPrices.filter(price => price.timestamp >= twentytwoMinutesAgo);
                 }
+
+
+                // Debug log to check the number of prices in the last 14 minutes
             } catch (error) {
                 console.error(`[${apiToken}] Tick failed:`, error);
             }
@@ -617,10 +598,6 @@ const connectWebSocket = (apiToken) => {
             }
           }
           break;
-
-        case "history":
-          // Historical data is already handled in initializeMarketData
-          break;  
 
         case "proposal_open_contract":
           const contract = response.proposal_open_contract;
@@ -704,9 +681,8 @@ setTimeout(() => {
 
 
 
-app.listen(3000, async () => {
-  console.log('Server running on port 3000');
-
-  // Create WebSocket connections
-  createWebSocketConnections();
-});
+app.listen(3000, () => {
+    console.log('Server running on port 3000');
+    createWebSocketConnections();
+  });
+  
