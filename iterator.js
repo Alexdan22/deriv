@@ -413,7 +413,7 @@ const setProfit = async (ws, response) => {
   const foundUser = await Threshold.findOne({ uniqueDate });
   
   if (!foundUser) {
-    if(balance > 49){
+    if(balance > 38){
       // Define stake levels
     const stakeLevels = [50, 100, 200, 300, 400, 500, 600, 700, 800];
     
