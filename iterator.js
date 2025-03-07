@@ -234,6 +234,8 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       // Reset state variables
       hasCrossedAbove80 = false;
       hasDroppedBelow80 = false;
+      hasCrossedBelow20 = false;
+      hasRisenAbove20 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = lastRSI > 55;
@@ -270,6 +272,8 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       console.log("📉 Stochastic dropped back below 20 after rising above");
 
       // Reset state variables
+      hasCrossedAbove80 = false;
+      hasDroppedBelow80 = false;
       hasCrossedBelow20 = false;
       hasRisenAbove20 = false;
 
@@ -311,10 +315,13 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
     }
 
     if (hasCrossedBelow20 &&  lastK > 20) {
-      console.log("✅ Stochastic went above 20 after crossing below");
+      console.log("✅ Stochastic rose above 20 after crossing below");
 
       // Reset state variables
+      hasCrossedAbove80 = false;
+      hasDroppedBelow80 = false;
       hasCrossedBelow20 = false;
+      hasRisenAbove20 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = lastRSI < 45;
@@ -343,6 +350,9 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
 
       // Reset state variables
       hasCrossedAbove80 = false;
+      hasDroppedBelow80 = false;
+      hasCrossedBelow20 = false;
+      hasRisenAbove20 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = lastRSI < 45;
