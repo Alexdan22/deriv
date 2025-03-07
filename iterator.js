@@ -202,16 +202,16 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   // Determine market trend
   const marketValue = lastBollingerUpper - lastBollingerLower;
   
-  console.log("Stochastic:", lastK);
-  console.log("RSI:", lastRSI);
-  console.log("EMA9:", lastEMA9);
-  console.log("EMA14:", lastEMA14);
-  console.log("EMA21:", lastEMA21);
+  
 
-  // **TRENDING MARKET STRATEGY (marketValue > 3)**
-  if (marketValue > 3) {
+  // **TRENDING MARKET STRATEGY**
+  if (marketValue > 2) {
     if(trend !== "trending" || trend === null){
       trend = "trending";
+      hasCrossedAbove80 = false;
+      hasDroppedBelow80 = false;
+      hasCrossedBelow20 = false;
+      hasRisenAbove20 = false;
       console.log(`Market Value: ${marketValue}`);
       const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
       console.log(`📈 Trending Market Strategy detected at ${currentTime}`);
@@ -236,17 +236,21 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       hasDroppedBelow80 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = lastRSI > 60;
+      const isRSIBuy = lastRSI > 55;
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
 
       if (isRSIBuy && isEMAUptrend) {
+        const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
         console.log("Stochastic:", lastK);
         console.log("RSI:", lastRSI);
+        console.log("Upper Bollinger Band:", lastBollingerUpper);
+        console.log("Lower Bollinger Band:", lastBollingerLower);
         console.log("EMA9:", lastEMA9);
         console.log("EMA14:", lastEMA14);
         console.log("EMA21:", lastEMA21);
-
-        console.log("🚀 BUY Signal Triggered");
+        console.log("---------------------------");
+        console.log(`🚀 BUY Signal Triggered at ${currentTime}`);
+        console.log("---------------------------");
         return "BUY";
       }
     }
@@ -270,11 +274,20 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       hasRisenAbove20 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
-      const isRSISell = lastRSI < 40;
+      const isRSISell = lastRSI < 45;
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
-      if (isRSISell && isEMADowntrend) {
-        console.log("🚨 SELL Signal Triggered");
+      if (isRSISell && isEMADowntrend) {console.log("Stochastic:", lastK);
+        const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
+        console.log("RSI:", lastRSI);
+        console.log("Upper Bollinger Band:", lastBollingerUpper);
+        console.log("Lower Bollinger Band:", lastBollingerLower);
+        console.log("EMA9:", lastEMA9);
+        console.log("EMA14:", lastEMA14);
+        console.log("EMA21:", lastEMA21);
+        console.log("---------------------------");
+        console.log(`🚨 SELL Signal Triggered at ${currentTime}`);
+        console.log("---------------------------");
         return "SELL";
       }
     }
@@ -283,6 +296,10 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   } else {
     if(trend !== "sideways" || trend === null){
       trend = "sideways";
+      hasCrossedAbove80 = false;
+      hasDroppedBelow80 = false;
+      hasCrossedBelow20 = false;
+      hasRisenAbove20 = false;
       console.log(`Market Value: ${marketValue}`);
       const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
       console.log(`📉 Sideways Market Strategy detected at ${currentTime}`);
@@ -303,10 +320,14 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       const isRSIBuy = lastRSI < 45;
 
       if (isRSIBuy) {
+        const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
         console.log("Stochastic:", lastK);
         console.log("RSI:", lastRSI);
-
-        console.log("🚀 BUY Signal Triggered");
+        console.log("Upper Bollinger Band:", lastBollingerUpper);
+        console.log("Lower Bollinger Band:", lastBollingerLower);
+        console.log("---------------------------");
+        console.log(`🚀 BUY Signal Triggered at ${currentTime}`);
+        console.log("---------------------------");
         return "BUY";
       }
     }
@@ -327,7 +348,14 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       const isRSISell = lastRSI < 45;
 
       if (isRSISell) {
-        console.log("🚨 SELL Signal Triggered");
+        const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
+        console.log("Stochastic:", lastK);
+        console.log("RSI:", lastRSI);
+        console.log("Upper Bollinger Band:", lastBollingerUpper);
+        console.log("Lower Bollinger Band:", lastBollingerLower);
+        console.log("---------------------------");
+        console.log(`🚨 SELL Signal Triggered at ${currentTime}`);
+        console.log("---------------------------");
         return "SELL";
       }
     }
