@@ -192,6 +192,11 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   const lastStochastic = stochastic[stochastic.length - 1]; 
   const lastK = lastStochastic.k;
   const lastRSI = rsi[rsi.length - 1];
+  latestRSIValues.push(lastRSI);
+  // Keep only the last 6 RSI values
+  if (latestRSIValues.length > 6) {
+    latestRSIValues.shift(); // Remove the oldest RSI value
+  }
   const lastEMA9 = ema9[ema9.length - 1];
   const lastEMA14 = ema14[ema14.length - 1];
   const lastEMA21 = ema21[ema21.length - 1];
@@ -233,7 +238,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
     if (stochasticState.hasCrossedAbove80 && stochasticState.hasDroppedBelow70 && lastK > 80) {
       console.log(`📈 Stochastic rose back above 80 after dropping below at ${currentTime}`);
       console.log("Stochastic:", lastK);
-      console.log("RSI:", lastRSI);
+      console.log("RSI:", latestRSIValues);
       console.log("Upper Bollinger Band:", lastBollingerUpper);
       console.log("Lower Bollinger Band:", lastBollingerLower);
       console.log("EMA9:", lastEMA9);
@@ -247,7 +252,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = lastRSI > 55;
+      const isRSIBuy = latestRSIValues.some(value => value > 55);
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
 
       if (isRSIBuy && isEMAUptrend) {
@@ -272,7 +277,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
     if (stochasticState.hasCrossedBelow20 && stochasticState.hasRisenAbove30 && lastK < 20) {
       console.log(`📉 Stochastic dropped back below 20 after rising above at ${currentTime}`);
       console.log("Stochastic:", lastK);
-      console.log("RSI:", lastRSI);
+      console.log("RSI:", latestRSIValues);
       console.log("Upper Bollinger Band:", lastBollingerUpper);
       console.log("Lower Bollinger Band:", lastBollingerLower);
       console.log("EMA9:", lastEMA9);
@@ -286,7 +291,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
-      const isRSISell = lastRSI < 45;
+      const isRSISell = latestRSIValues.some(value => value < 45);
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
       if (isRSISell && isEMADowntrend) {
@@ -319,7 +324,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
     if (stochasticState.hasCrossedBelow20 &&  lastK > 20) {
       console.log(`✅ Stochastic rose above 20 after crossing below at ${currentTime}`);
       console.log("Stochastic:", lastK);
-      console.log("RSI:", lastRSI);
+      console.log("RSI:", latestRSIValues);
       console.log("Upper Bollinger Band:", lastBollingerUpper);
       console.log("Lower Bollinger Band:", lastBollingerLower);
 
@@ -330,7 +335,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = lastRSI < 45;
+      const isRSIBuy = latestRSIValues.some(value => value < 45);
 
       if (isRSIBuy) {
         console.log("---------------------------");
@@ -349,7 +354,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
     if (stochasticState.hasCrossedAbove80 && lastK < 80) {
       console.log(`✅ Stochastic went below 80 after crossing above at ${currentTime}`);
       console.log("Stochastic:", lastK);
-      console.log("RSI:", lastRSI);
+      console.log("RSI:", latestRSIValues);
       console.log("Upper Bollinger Band:", lastBollingerUpper);
       console.log("Lower Bollinger Band:", lastBollingerLower);
 
@@ -360,7 +365,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
-      const isRSISell = lastRSI < 45;
+      const isRSISell = latestRSIValues.some(value => value > 55);
 
       if (isRSISell) {
         console.log("---------------------------");
