@@ -88,6 +88,12 @@ const stochasticState = {
   hasCrossedBelow20: false,
   hasRisenAbove30: false
 };
+const stochasticKD = {
+  hasCrossedAbove80: false,
+  hasDroppedBelow70: false,
+  hasCrossedBelow20: false,
+  hasRisenAbove30: false
+};
 let wsMap = new Map(); // Store WebSocket connections
 let tradeInProgress = false; // Flag to prevent multiple trades
 const tradeConditions = new Map();
@@ -386,7 +392,101 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   return "HOLD";
 }
 
+function checkKD(stochastic, rsi, bollingerBands){
+  const now = DateTime.now(); // Current time in seconds
+  const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
+  if (!stochastic?.length || !rsi?.length || !bollingerBands?.length) {
+    console.log("Insufficient indicator values for calculation");
+    return "HOLD";
+  }
 
+  //Indicator values 
+  const lastStochastic = stochastic[stochastic.length - 1]; 
+  const lastK = lastStochastic.k;
+  const lastD = lastStochastic.d;
+  const lastRSI = rsi[rsi.length - 1];
+  latestRSIValues.push(lastRSI);
+  // Keep only the last 6 RSI values
+  if (latestRSIValues.length > 6) {
+    latestRSIValues.shift(); // Remove the oldest RSI value
+  }
+  const lastBollingerBand = bollingerBands[bollingerBands.length - 1];
+
+  const lastBollingerUpper = lastBollingerBand.upper;
+  const lastBollingerLower = lastBollingerBand.lower;
+
+  // Determine market trend
+  const marketValue = lastBollingerUpper - lastBollingerLower;
+  
+  if(marketValue < 1.5){
+
+    
+    //CHECK BUY CONDITION
+    if(!stochasticKD.hasCrossedBelow20 && lastK < 20){
+      stochasticKD.hasCrossedBelow20 = true;
+    }
+  
+    if(stochasticKD.hasCrossedBelow20 && lastK > lastD && lastD <=35){
+      console.log(`✅ Stochastic values crossed each other at ${currentTime}`);
+      console.log("Stochastic:", lastStochastic);
+      console.log("RSI:", latestRSIValues);
+      console.log("Upper Bollinger Band:", lastBollingerUpper);
+      console.log("Lower Bollinger Band:", lastBollingerLower);
+      
+      // Reset state variables
+      stochasticKD.hasCrossedAbove80 = false;
+      stochasticKD.hasDroppedBelow70 = false;
+      stochasticKD.hasCrossedBelow20 = false;
+      stochasticKD.hasRisenAbove30 = false;
+
+      // ✅ Confirm RSI conditions for BUY
+      const isRSIBUY = latestRSIValues.some(value => value < 40);
+
+      if (isRSIBUY) {
+        console.log("---------------------------");
+        console.log(`🚨 BUY Signal Triggered at ${currentTime}`);
+        console.log("---------------------------");
+        return "BUY";
+      }
+  
+    }
+
+    //CHECK SELL CONDITION
+    if(!stochasticKD.hasCrossedAbove80 && lastK > 80){
+      stochasticKD.hasCrossedAbove80 = true;
+    }
+  
+    if(stochasticKD.hasCrossedAbove80 && lastK < lastD && lastD >=65){
+      console.log(`✅ Stochastic values crossed each other at ${currentTime}`);
+      console.log("Stochastic:", lastStochastic);
+      console.log("RSI:", latestRSIValues);
+      console.log("Upper Bollinger Band:", lastBollingerUpper);
+      console.log("Lower Bollinger Band:", lastBollingerLower);
+      
+      // Reset state variables
+      stochasticKD.hasCrossedAbove80 = false;
+      stochasticKD.hasDroppedBelow70 = false;
+      stochasticKD.hasCrossedBelow20 = false;
+      stochasticKD.hasRisenAbove30 = false;
+
+      // ✅ Confirm RSI conditions for BUY
+      const isRSISELL = latestRSIValues.some(value => value > 60);
+
+      if (isRSISELL) {
+        console.log("---------------------------");
+        console.log(`🚨 SELL Signal Triggered at ${currentTime}`);
+        console.log("---------------------------");
+        return "SELL";
+      }
+  
+    }
+  }
+
+
+  
+  // Default to HOLD
+  return "HOLD";
+}
 
 // Function to process market data
 const processMarketData = async () => {
@@ -411,6 +511,7 @@ const processMarketData = async () => {
 
   // ✅ Check trade signal using the calculated values
   const call = checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands);
+  const call2 = checkKD(stochastic, rsi, bollingerBands);
   
 
   if (call !== "HOLD") {
@@ -419,6 +520,23 @@ const processMarketData = async () => {
     stochasticState.hasDroppedBelow70 = false;
     stochasticState.hasCrossedBelow20 = false;
     stochasticState.hasRisenAbove30 = false;
+
+    API_TOKENS.forEach(accountId => {
+      const ws = wsMap.get(accountId);
+      if (ws?.readyState === WebSocket.OPEN) {
+        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
+      } else {
+        console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
+      }
+    });
+  }
+
+  if (call2 !== "HOLD") {
+    // Reset state variables after placing a trade
+    stochasticKD.hasCrossedAbove80 = false;
+    stochasticKD.hasDroppedBelow70 = false;
+    stochasticKD.hasCrossedBelow20 = false;
+    stochasticKD.hasRisenAbove30 = false;
 
     API_TOKENS.forEach(accountId => {
       const ws = wsMap.get(accountId);

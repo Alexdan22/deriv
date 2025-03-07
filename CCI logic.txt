@@ -1,0 +1,11 @@
+**BUY CONDITION**
+
+%D value should be below 35
+%K value should go below 20 and cross %D value
+RSI should be below 40
+
+**SELL CONDITION**
+
+%D value should be above 65
+%K value should go above 80 and cross %D value
+RSI should be above 60
