@@ -84,9 +84,9 @@ let latestRSIValues = []; // Array to store the latest 6 RSI values
 // State variables for BUY and SELL condition
 const stochasticState = {
   hasCrossedAbove80: false,
-  hasDroppedBelow80: false,
+  hasDroppedBelow70: false,
   hasCrossedBelow20: false,
-  hasRisenAbove20: false
+  hasRisenAbove30: false
 };
 let wsMap = new Map(); // Store WebSocket connections
 let tradeInProgress = false; // Flag to prevent multiple trades
@@ -209,9 +209,9 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
     if(trend !== "trending" || trend === null){
       trend = "trending";
       hasCrossedAbove80 = false;
-      hasDroppedBelow80 = false;
+      hasDroppedBelow70 = false;
       hasCrossedBelow20 = false;
-      hasRisenAbove20 = false;
+      hasRisenAbove30 = false;
       console.log(`Market Value: ${marketValue}`);
       const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
       console.log(`📈 Trending Market Strategy detected at ${currentTime}`);
@@ -223,19 +223,19 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       console.log("✅ Stochastic crossed above 80");
     }
 
-    if (stochasticState.hasCrossedAbove80 && lastK < 80 && !stochasticState.hasDroppedBelow80) {
-      stochasticState.hasDroppedBelow80 = true;
-      console.log("✅ Stochastic dropped below 80 after crossing above");
+    if (stochasticState.hasCrossedAbove80 && lastK < 70 && !stochasticState.hasDroppedBelow70) {
+      stochasticState.hasDroppedBelow70 = true;
+      console.log("✅ Stochastic dropped below 70 after crossing above");
     }
 
-    if (stochasticState.hasCrossedAbove80 && stochasticState.hasDroppedBelow80 && lastK > 80) {
+    if (stochasticState.hasCrossedAbove80 && stochasticState.hasDroppedBelow70 && lastK > 80) {
       console.log("📈 Stochastic rose back above 80 after dropping below");
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow80 = false;
+      stochasticState.hasDroppedBelow70 = false;
       stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove20 = false;
+      stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = lastRSI > 55;
@@ -263,19 +263,19 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       console.log("✅ Stochastic crossed below 20");
     }
 
-    if (stochasticState.hasCrossedBelow20 && lastK > 20 && !stochasticState.hasRisenAbove20) {
-      stochasticState.hasRisenAbove20 = true;
-      console.log("✅ Stochastic rose above 20 after crossing below");
+    if (stochasticState.hasCrossedBelow20 && lastK > 30 && !stochasticState.hasRisenAbove30) {
+      stochasticState.hasRisenAbove30 = true;
+      console.log("✅ Stochastic rose above 30 after crossing below");
     }
 
-    if (stochasticState.hasCrossedBelow20 && stochasticState.hasRisenAbove20 && lastK < 20) {
+    if (stochasticState.hasCrossedBelow20 && stochasticState.hasRisenAbove30 && lastK < 20) {
       console.log("📉 Stochastic dropped back below 20 after rising above");
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow80 = false;
+      stochasticState.hasDroppedBelow70 = false;
       stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove20 = false;
+      stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = lastRSI < 45;
@@ -302,9 +302,9 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
     if(trend !== "sideways" || trend === null){
       trend = "sideways";
       stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow80 = false;
+      stochasticState.hasDroppedBelow70 = false;
       stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove20 = false;
+      stochasticState.hasRisenAbove30 = false;
       console.log(`Market Value: ${marketValue}`);
       const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
       console.log(`📉 Sideways Market Strategy detected at ${currentTime}`);
@@ -320,9 +320,9 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow80 = false;
+      stochasticState.hasDroppedBelow70 = false;
       stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove20 = false;
+      stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = lastRSI < 45;
@@ -351,9 +351,9 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
 
       // Reset state variables
       hasCrossedAbove80 = false;
-      hasDroppedBelow80 = false;
+      hasDroppedBelow70 = false;
       hasCrossedBelow20 = false;
-      hasRisenAbove20 = false;
+      hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = lastRSI < 45;
@@ -406,9 +406,9 @@ const processMarketData = async () => {
   if (call !== "HOLD") {
     // Reset state variables after placing a trade
     hasCrossedAbove80 = false;
-    hasDroppedBelow80 = false;
+    hasDroppedBelow70 = false;
     hasCrossedBelow20 = false;
-    hasRisenAbove20 = false;
+    hasRisenAbove30 = false;
 
     API_TOKENS.forEach(accountId => {
       const ws = wsMap.get(accountId);
