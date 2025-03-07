@@ -179,6 +179,7 @@ async function calculateIndicators(prices) {
   };
 }
 
+
 // Function to check trade signals based on indicators
 function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   const now = DateTime.now(); // Current time in seconds
@@ -211,7 +212,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   
 
   // **TRENDING MARKET STRATEGY**
-  if (marketValue > 2) {
+  if (marketValue > 3) {
     if(trend !== "trending" || trend === null){
       trend = "trending";
       stochasticState.hasCrossedAbove80 = false;
@@ -219,9 +220,11 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasCrossedBelow20 = false;
       stochasticState.hasRisenAbove30 = false;
       console.log(`Market Value: ${marketValue}`);
+      console.log('');
       console.log("--------------------------------------------------------");
       console.log(`📈 Trending Market Strategy detected at ${currentTime}`);
       console.log("--------------------------------------------------------");
+      console.log('');
     }
 
     // ✅ Check BUY conditions
@@ -302,8 +305,8 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       }
     }
 
-  // **SIDEWAYS MARKET STRATEGY (marketValue ≤ 2)**
-  } else {
+  // **SIDEWAYS MARKET STRATEGY**
+  } else if(marketValue > 1.5 && marketValue < 3) {
     if(trend !== "sideways" || trend === null){
       trend = "sideways";
       stochasticState.hasCrossedAbove80 = false;
@@ -311,9 +314,11 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasCrossedBelow20 = false;
       stochasticState.hasRisenAbove30 = false;
       console.log(`Market Value: ${marketValue}`);
+      console.log('');
       console.log("--------------------------------------------------------");
       console.log(`📉 Sideways Market Strategy detected at ${currentTime}`);
       console.log("--------------------------------------------------------");
+      console.log('');
     }
     // ✅ Check BUY conditions
     if (lastK < 20 && !stochasticState.hasCrossedBelow20) {
@@ -335,7 +340,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = latestRSIValues.some(value => value < 45);
+      const isRSIBuy = latestRSIValues.some(value => value < 47);
 
       if (isRSIBuy) {
         console.log("---------------------------");
@@ -365,7 +370,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
-      const isRSISell = latestRSIValues.some(value => value > 55);
+      const isRSISell = latestRSIValues.some(value => value > 53);
 
       if (isRSISell) {
         console.log("---------------------------");
@@ -406,6 +411,7 @@ const processMarketData = async () => {
 
   // ✅ Check trade signal using the calculated values
   const call = checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands);
+  
 
   if (call !== "HOLD") {
     // Reset state variables after placing a trade
