@@ -209,10 +209,10 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   if (marketValue > 2) {
     if(trend !== "trending" || trend === null){
       trend = "trending";
-      hasCrossedAbove80 = false;
-      hasDroppedBelow70 = false;
-      hasCrossedBelow20 = false;
-      hasRisenAbove30 = false;
+      stochasticState.hasCrossedAbove80 = false;
+      stochasticState.hasDroppedBelow70 = false;
+      stochasticState.hasCrossedBelow20 = false;
+      stochasticState.hasRisenAbove30 = false;
       console.log(`Market Value: ${marketValue}`);
       console.log("--------------------------------------------------------");
       console.log(`📈 Trending Market Strategy detected at ${currentTime}`);
@@ -232,6 +232,13 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
 
     if (stochasticState.hasCrossedAbove80 && stochasticState.hasDroppedBelow70 && lastK > 80) {
       console.log(`📈 Stochastic rose back above 80 after dropping below at ${currentTime}`);
+      console.log("Stochastic:", lastK);
+      console.log("RSI:", lastRSI);
+      console.log("Upper Bollinger Band:", lastBollingerUpper);
+      console.log("Lower Bollinger Band:", lastBollingerLower);
+      console.log("EMA9:", lastEMA9);
+      console.log("EMA14:", lastEMA14);
+      console.log("EMA21:", lastEMA21);
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
@@ -244,13 +251,6 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
 
       if (isRSIBuy && isEMAUptrend) {
-        console.log("Stochastic:", lastK);
-        console.log("RSI:", lastRSI);
-        console.log("Upper Bollinger Band:", lastBollingerUpper);
-        console.log("Lower Bollinger Band:", lastBollingerLower);
-        console.log("EMA9:", lastEMA9);
-        console.log("EMA14:", lastEMA14);
-        console.log("EMA21:", lastEMA21);
         console.log("---------------------------");
         console.log(`🚀 BUY Signal Triggered at ${currentTime}`);
         console.log("---------------------------");
@@ -271,6 +271,13 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
 
     if (stochasticState.hasCrossedBelow20 && stochasticState.hasRisenAbove30 && lastK < 20) {
       console.log(`📉 Stochastic dropped back below 20 after rising above at ${currentTime}`);
+      console.log("Stochastic:", lastK);
+      console.log("RSI:", lastRSI);
+      console.log("Upper Bollinger Band:", lastBollingerUpper);
+      console.log("Lower Bollinger Band:", lastBollingerLower);
+      console.log("EMA9:", lastEMA9);
+      console.log("EMA14:", lastEMA14);
+      console.log("EMA21:", lastEMA21);
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
@@ -283,13 +290,6 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
       if (isRSISell && isEMADowntrend) {
-        console.log("Stochastic:", lastK);
-        console.log("RSI:", lastRSI);
-        console.log("Upper Bollinger Band:", lastBollingerUpper);
-        console.log("Lower Bollinger Band:", lastBollingerLower);
-        console.log("EMA9:", lastEMA9);
-        console.log("EMA14:", lastEMA14);
-        console.log("EMA21:", lastEMA21);
         console.log("---------------------------");
         console.log(`🚨 SELL Signal Triggered at ${currentTime}`);
         console.log("---------------------------");
@@ -318,6 +318,10 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
 
     if (stochasticState.hasCrossedBelow20 &&  lastK > 20) {
       console.log(`✅ Stochastic rose above 20 after crossing below at ${currentTime}`);
+      console.log("Stochastic:", lastK);
+      console.log("RSI:", lastRSI);
+      console.log("Upper Bollinger Band:", lastBollingerUpper);
+      console.log("Lower Bollinger Band:", lastBollingerLower);
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
@@ -329,10 +333,6 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       const isRSIBuy = lastRSI < 45;
 
       if (isRSIBuy) {
-        console.log("Stochastic:", lastK);
-        console.log("RSI:", lastRSI);
-        console.log("Upper Bollinger Band:", lastBollingerUpper);
-        console.log("Lower Bollinger Band:", lastBollingerLower);
         console.log("---------------------------");
         console.log(`🚀 BUY Signal Triggered at ${currentTime}`);
         console.log("---------------------------");
@@ -348,6 +348,10 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
 
     if (stochasticState.hasCrossedAbove80 && lastK < 80) {
       console.log(`✅ Stochastic went below 80 after crossing above at ${currentTime}`);
+      console.log("Stochastic:", lastK);
+      console.log("RSI:", lastRSI);
+      console.log("Upper Bollinger Band:", lastBollingerUpper);
+      console.log("Lower Bollinger Band:", lastBollingerLower);
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
@@ -359,10 +363,6 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       const isRSISell = lastRSI < 45;
 
       if (isRSISell) {
-        console.log("Stochastic:", lastK);
-        console.log("RSI:", lastRSI);
-        console.log("Upper Bollinger Band:", lastBollingerUpper);
-        console.log("Lower Bollinger Band:", lastBollingerLower);
         console.log("---------------------------");
         console.log(`🚨 SELL Signal Triggered at ${currentTime}`);
         console.log("---------------------------");
