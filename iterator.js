@@ -166,7 +166,7 @@ async function calculateIndicators(prices) {
       low: lowPrices,
       close: closePrices,
       period: 84,
-      signalPeriod: 21
+      signalPeriod: 126
   });
 
   // Bollinger Bands Calculation
