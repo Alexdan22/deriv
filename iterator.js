@@ -217,7 +217,6 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
   
   // Determine market trend
   
-  console.log(marketValue);
   
 
   if(marketValue > 8){
