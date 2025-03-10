@@ -619,10 +619,10 @@ function checkKD(stochastic){
 // Function to process market data
 const processMarketData = async () => {
   const now = DateTime.now().toSeconds(); // Current time in seconds
-  const twentytwoMinutesAgo = now - (22 * 60); // 22 minutes ago in seconds
+  const thirtySixMinutesAgo = now - (36 * 60); // 22 minutes ago in seconds
 
   // Filter marketPrices to only include prices from the last 22 minutes
-  const recentPrices = marketPrices.filter(price => price.timestamp >= twentytwoMinutesAgo);
+  const recentPrices = marketPrices.filter(price => price.timestamp >= thirtySixMinutesAgo);
 
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData = aggregateOHLC(recentPrices);
@@ -915,7 +915,7 @@ const connectWebSocket = (apiToken) => {
         case "tick":
             try {
                 const now = DateTime.now().toSeconds(); // Current time in seconds
-                const twentytwoMinutesAgo = now - (22 * 60); // 22 minutes ago in seconds
+                const thirtySixMinutesAgo = now - (36 * 60); // 36 minutes ago in seconds
                 // Extract the new tick data
                 const newTick = {
                   price: response.tick.quote,
@@ -930,7 +930,7 @@ const connectWebSocket = (apiToken) => {
                   marketPrices.push(newTick);
                   
                 // Filter out old data
-                marketPrices = marketPrices.filter(price => price.timestamp >= twentytwoMinutesAgo);
+                marketPrices = marketPrices.filter(price => price.timestamp >= thirtySixMinutesAgo);
                 }
 
 
