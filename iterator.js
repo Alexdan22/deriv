@@ -81,6 +81,7 @@ const WEBSOCKET_URL = 'wss://ws.derivws.com/websockets/v3?app_id=67402';
 const PING_INTERVAL = 30000;
 let marketPrices = [];
 let latestRSIValues = []; // Array to store the latest 6 RSI values
+let latestBollingerBands = []; //Array to store the latest 10 Bollinger band values
 // State variables for BUY and SELL condition
 const stochasticState = {
   hasCrossedAbove80: false,
@@ -147,9 +148,14 @@ function aggregateOHLC(prices) {
 
 // Function to calculate Indicator values
 async function calculateIndicators(prices) {
+
   const closePrices = prices.map(c => c.close);
   const highPrices = prices.map(c => c.high);
   const lowPrices = prices.map(c => c.low);
+  if (!closePrices || closePrices.length === 0 || closePrices.some(isNaN)) {
+    console.error('Invalid close prices for Bollinger Bands calculation');
+    return;
+  }
 
   // RSI Calculation
   const rsi = ti.RSI.calculate({ values: closePrices, period: 84 });
@@ -175,10 +181,12 @@ async function calculateIndicators(prices) {
   const ema14 = ti.EMA.calculate({ values: closePrices, period: 84 });
   const ema21 = ti.EMA.calculate({ values: closePrices, period: 126 });
 
+  const lastBollingerBand = bollingerBands[bollingerBands.length - 1];
+  latestBollingerBands.push(lastBollingerBand);
+  
   return {
       rsi,
       stochastic,
-      bollingerBands,
       ema9,
       ema14,
       ema21
@@ -187,9 +195,9 @@ async function calculateIndicators(prices) {
 
 
 // Function to check trade signals based on indicators
-function checkTradeSignal(stochastic, ema9, ema14, ema21, bollingerBands) {
+function checkTradeSignal(stochastic, ema9, ema14, ema21) {
   const now = DateTime.now(); // Current time in seconds
-  if (!stochastic?.length|| !ema9?.length || !ema14?.length || !ema21?.length || !bollingerBands?.length) {
+  if (!stochastic?.length|| !ema9?.length || !ema14?.length || !ema21?.length) {
     console.log("Insufficient indicator values for calculation");
     return "HOLD";
   }
@@ -202,14 +210,14 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, bollingerBands) {
   const lastEMA9 = ema9[ema9.length - 1];
   const lastEMA14 = ema14[ema14.length - 1];
   const lastEMA21 = ema21[ema21.length - 1];
-  const lastBollingerBand = bollingerBands[bollingerBands.length - 1];
-
+  const lastBollingerBand = latestBollingerBands[latestBollingerBands.length - 1];
   const lastBollingerUpper = lastBollingerBand.upper;
   const lastBollingerLower = lastBollingerBand.lower;
-
-  // Determine market trend
   const marketValue = lastBollingerUpper - lastBollingerLower;
   
+  // Determine market trend
+  
+  console.log(marketValue);
   
 
   if(marketValue > 8){
@@ -496,10 +504,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, bollingerBands) {
   return "HOLD";
 }
 
-function checkKD(stochastic, bollingerBands){
+function checkKD(stochastic){
   const now = DateTime.now(); // Current time in seconds
   const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
-  if (!stochastic?.length || !bollingerBands?.length) {
+  if (!stochastic?.length) {
     console.log("Insufficient indicator values for calculation");
     return "HOLD";
   }
@@ -508,8 +516,7 @@ function checkKD(stochastic, bollingerBands){
   const lastStochastic = stochastic[stochastic.length - 1]; 
   const lastK = lastStochastic.k;
   const lastD = lastStochastic.d;
-  const lastBollingerBand = bollingerBands[bollingerBands.length - 1];
-
+  const lastBollingerBand = latestBollingerBands[latestBollingerBands.length - 1];
   const lastBollingerUpper = lastBollingerBand.upper;
   const lastBollingerLower = lastBollingerBand.lower;
 
@@ -601,14 +608,15 @@ const processMarketData = async () => {
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData = aggregateOHLC(recentPrices);
 
-  if (ohlcData.length < 126){
+  if (ohlcData.length < 12){
     console.log(`Insufficient data... Data length: ${ohlcData.length}`);
     return; // Ensure enough data for calculations
   } 
 
   // ✅ Fetch indicator values from the module
   const conditions = await calculateIndicators(ohlcData);
-  const { rsi, stochastic, ema9, ema14, ema21, bollingerBands } = conditions;
+  const { rsi, stochastic, ema9, ema14, ema21} = conditions;
+  
 
   const lastRSI = rsi[rsi.length - 1];
   latestRSIValues.push(lastRSI);
@@ -616,10 +624,13 @@ const processMarketData = async () => {
   if (latestRSIValues.length > 6) {
     latestRSIValues.shift(); // Remove the oldest RSI value
   }
+  if (latestBollingerBands.length > 10) {
+    latestBollingerBands.shift(); // Remove the oldest RSI value
+  }
 
   // ✅ Check trade signal using the calculated values
-  const call = checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands);
-  const call2 = checkKD(stochastic, rsi, bollingerBands);
+  const call = checkTradeSignal(stochastic, ema9, ema14, ema21);
+  const call2 = checkKD(stochastic);
   
 
   if (call !== "HOLD") {
