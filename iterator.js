@@ -166,7 +166,7 @@ async function calculateIndicators(prices) {
   // Bollinger Bands Calculation
   const bollingerBands = ti.BollingerBands.calculate({
       values: closePrices,
-      period: 84,
+      period: 120,
       stdDev: 2
   });
 
@@ -187,7 +187,7 @@ async function calculateIndicators(prices) {
 
 
 // Function to check trade signals based on indicators
-function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
+function checkTradeSignal(stochastic, ema9, ema14, ema21, bollingerBands) {
   const now = DateTime.now(); // Current time in seconds
   if (!stochastic?.length || !rsi?.length || !ema9?.length || !ema14?.length || !ema21?.length || !bollingerBands?.length) {
     console.log("Insufficient indicator values for calculation");
@@ -198,12 +198,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
   const lastStochastic = stochastic[stochastic.length - 1]; 
   const lastK = lastStochastic.k;
-  const lastRSI = rsi[rsi.length - 1];
-  latestRSIValues.push(lastRSI);
-  // Keep only the last 6 RSI values
-  if (latestRSIValues.length > 6) {
-    latestRSIValues.shift(); // Remove the oldest RSI value
-  }
+  const lastD = lastStochastic.d;
   const lastEMA9 = ema9[ema9.length - 1];
   const lastEMA14 = ema14[ema14.length - 1];
   const lastEMA21 = ema21[ema21.length - 1];
@@ -217,102 +212,8 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   
   
 
-  // **TRENDING MARKET STRATEGY**
-  if (marketValue > 3) {
-    if(trend !== "trending" || trend === null){
-      trend = "trending";
-      stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow70 = false;
-      stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove30 = false;
-      console.log(`Market Value: ${marketValue}`);
-      console.log('');
-      console.log("--------------------------------------------------------");
-      console.log(`📈 Trending Market Strategy detected at ${currentTime}`);
-      console.log("--------------------------------------------------------");
-      console.log('');
-    }
-
-    // ✅ Check BUY conditions
-    if (lastK > 80 && !stochasticState.hasCrossedAbove80) {
-      stochasticState.hasCrossedAbove80 = true;
-      console.log(`✅ Stochastic crossed above 80 at ${currentTime}`);
-    }
-
-    if (stochasticState.hasCrossedAbove80 && lastK < 70 && !stochasticState.hasDroppedBelow70) {
-      stochasticState.hasDroppedBelow70 = true;
-      console.log(`✅ Stochastic dropped below 70 after crossing above at ${currentTime}`);
-    }
-
-    if (stochasticState.hasCrossedAbove80 && stochasticState.hasDroppedBelow70 && lastK > 80) {
-      console.log(`📈 Stochastic rose back above 80 after dropping below at ${currentTime}`);
-      console.log("Stochastic:", lastK);
-      console.log("RSI:", latestRSIValues);
-      console.log("Upper Bollinger Band:", lastBollingerUpper);
-      console.log("Lower Bollinger Band:", lastBollingerLower);
-      console.log("EMA9:", lastEMA9);
-      console.log("EMA14:", lastEMA14);
-      console.log("EMA21:", lastEMA21);
-
-      // Reset state variables
-      stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow70 = false;
-      stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove30 = false;
-
-      // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = latestRSIValues.some(value => value > 55);
-      const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
-
-      if (isRSIBuy && isEMAUptrend) {
-        console.log("---------------------------");
-        console.log(`🚀 BUY Signal Triggered at ${currentTime}`);
-        console.log("---------------------------");
-        return "BUY";
-      }
-    }
-
-    // ✅ Check SELL conditions
-    if (lastK < 20 && !stochasticState.hasCrossedBelow20) {
-      stochasticState.hasCrossedBelow20 = true;
-      console.log(`✅ Stochastic crossed below 20 at ${currentTime}`);
-    }
-
-    if (stochasticState.hasCrossedBelow20 && lastK > 30 && !stochasticState.hasRisenAbove30) {
-      stochasticState.hasRisenAbove30 = true;
-      console.log(`✅ Stochastic rose above 30 after crossing below at ${currentTime}`);
-    }
-
-    if (stochasticState.hasCrossedBelow20 && stochasticState.hasRisenAbove30 && lastK < 20) {
-      console.log(`📉 Stochastic dropped back below 20 after rising above at ${currentTime}`);
-      console.log("Stochastic:", lastK);
-      console.log("RSI:", latestRSIValues);
-      console.log("Upper Bollinger Band:", lastBollingerUpper);
-      console.log("Lower Bollinger Band:", lastBollingerLower);
-      console.log("EMA9:", lastEMA9);
-      console.log("EMA14:", lastEMA14);
-      console.log("EMA21:", lastEMA21);
-
-      // Reset state variables
-      stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow70 = false;
-      stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove30 = false;
-
-      // ✅ Confirm RSI & EMA conditions for SELL
-      const isRSISell = latestRSIValues.some(value => value < 45);
-      const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
-
-      if (isRSISell && isEMADowntrend) {
-        console.log("---------------------------");
-        console.log(`🚨 SELL Signal Triggered at ${currentTime}`);
-        console.log("---------------------------");
-        return "SELL";
-      }
-    }
-
-  // **SIDEWAYS MARKET STRATEGY**
-  } else if(marketValue > 1.5 && marketValue < 3) {
+  if(marketValue > 8){
+    // ** SIDEWAY MARKET STRATEGY**
     if(trend !== "sideways" || trend === null){
       trend = "sideways";
       stochasticState.hasCrossedAbove80 = false;
@@ -321,23 +222,24 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
       console.log(`Market Value: ${marketValue}`);
       console.log('');
-      console.log("--------------------------------------------------------");
-      console.log(`📉 Sideways Market Strategy detected at ${currentTime}`);
-      console.log("--------------------------------------------------------");
+      console.log("-----------------------------------------------------------------");
+      console.log('');
+      console.log(`⚡⚡Highly Volatile Sideways Market Strategy detected at ${currentTime}⚡⚡`);
+      console.log('');
+      console.log("-----------------------------------------------------------------");
       console.log('');
     }
     // ✅ Check BUY conditions
     if (lastK < 20 && !stochasticState.hasCrossedBelow20) {
       stochasticState.hasCrossedBelow20 = true;
-      console.log(`✅ Stochastic crossed below 20 at ${currentTime}`);
+      console.log(`📉📉 Stochastic crossed below 20 at ${currentTime}📉📉`);
     }
 
     if (stochasticState.hasCrossedBelow20 &&  lastK > 20) {
-      console.log(`✅ Stochastic rose above 20 after crossing below at ${currentTime}`);
-      console.log("Stochastic:", lastK);
+      console.log(`📈📈 Stochastic rose above 20 after crossing below at ${currentTime}📈📈`);
+      console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
-      console.log("Upper Bollinger Band:", lastBollingerUpper);
-      console.log("Lower Bollinger Band:", lastBollingerLower);
+      console.log("Bollinger Band:", marketValue);
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
@@ -346,28 +248,30 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = latestRSIValues.some(value => value < 47);
+      const isRSIBuy = latestRSIValues.some(value => value < 42);
+      const isRSIBuyLimit = latestRSIValues.some(value => value < 33);
 
-      if (isRSIBuy) {
+      if (isRSIBuy && (lastD < 80 || lastD > 20) && !isRSIBuyLimit) {
         console.log("---------------------------");
-        console.log(`🚀 BUY Signal Triggered at ${currentTime}`);
+        console.log(`🟢🔰🟢 BUY Signal Triggered at ${currentTime}🟢🔰🟢`);
         console.log("---------------------------");
         return "BUY";
+      }else if(!isRSIBuy || isRSIBuyLimit || (lastD > 80 || lastD < 20)){
+        console.log(`🛑❌BUY Signal conditions not met at${currentTime}❌🛑`)
       }
     }
 
     // ✅ Check SELL conditions
     if (lastK > 80 && !stochasticState.hasCrossedAbove80) {
       stochasticState.hasCrossedAbove80 = true;
-      console.log(`✅ Stochastic crossed above 80 at ${currentTime}`);
+      console.log(`📈📈 Stochastic crossed above 80 at ${currentTime}📈📈`);
     }
 
     if (stochasticState.hasCrossedAbove80 && lastK < 80) {
-      console.log(`✅ Stochastic went below 80 after crossing above at ${currentTime}`);
-      console.log("Stochastic:", lastK);
+      console.log(`📉📉 Stochastic went below 80 after crossing above at ${currentTime}📉📉`);
+      console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
-      console.log("Upper Bollinger Band:", lastBollingerUpper);
-      console.log("Lower Bollinger Band:", lastBollingerLower);
+      console.log("Bollinger Band:", marketValue);
 
       // Reset state variables
       stochasticState.hasCrossedAbove80 = false;
@@ -376,13 +280,213 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
-      const isRSISell = latestRSIValues.some(value => value > 53);
+      const isRSISell = latestRSIValues.some(value => value > 58);
+      const isRSISellLimit = latestRSIValues.some(value => value > 67);
 
-      if (isRSISell) {
+      if (isRSISell && !isRSISellLimit && (lastD < 80 || lastD > 20) ) {
         console.log("---------------------------");
-        console.log(`🚨 SELL Signal Triggered at ${currentTime}`);
+        console.log(`🔴🧧🔴 SELL Signal Triggered at ${currentTime}🔴🧧🔴`);
         console.log("---------------------------");
         return "SELL";
+      }else if(!isRSISell || isRSISellLimit || (lastD > 80 || lastD < 20)){
+        console.log(`🛑❌BUY Signal conditions not met at${currentTime}❌🛑`)
+      }
+    }
+
+  }else if (marketValue > 3.5 && marketValue < 8) {
+    // **TRENDING MARKET STRATEGY**
+
+    if(trend !== "trending" || trend === null){
+      trend = "trending";
+      stochasticState.hasCrossedAbove80 = false;
+      stochasticState.hasDroppedBelow70 = false;
+      stochasticState.hasCrossedBelow20 = false;
+      stochasticState.hasRisenAbove30 = false;
+      console.log(`Market Value: ${marketValue}`);
+      console.log('');
+      console.log("-----------------------------------------------------------------");
+      console.log('');
+      console.log(`🔥🔥 Trending Market Strategy detected at ${currentTime} 🔥🔥`);
+      console.log('');
+      console.log("-----------------------------------------------------------------");
+      console.log('');
+    }
+
+    // ✅ Check BUY conditions
+    if (lastK > 80 && !stochasticState.hasCrossedAbove80) {
+      stochasticState.hasCrossedAbove80 = true;
+      console.log(`📈📈 Stochastic crossed above 80 at ${currentTime}📈📈`);
+    }
+
+    if (stochasticState.hasCrossedAbove80 && lastK < 70 && !stochasticState.hasDroppedBelow70) {
+      stochasticState.hasDroppedBelow70 = true;
+      console.log(`📉📉 Stochastic dropped below 70 after crossing above at ${currentTime}📉📉`);
+    }
+
+    if (stochasticState.hasCrossedAbove80 && stochasticState.hasDroppedBelow70 && lastK > 80) {
+
+      // Reset state variables
+      stochasticState.hasCrossedAbove80 = false;
+      stochasticState.hasDroppedBelow70 = false;
+      stochasticState.hasCrossedBelow20 = false;
+      stochasticState.hasRisenAbove30 = false;
+
+      // ✅ Confirm RSI & EMA conditions for BUY
+      const isRSIBuy = latestRSIValues.some(value => value > 53);
+      const isRSIBuyLimit = latestRSIValues.some(value => value > 60);
+      const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
+      const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
+
+      console.log(`📈📈 Stochastic rose back above 80 after dropping below at ${currentTime}📈📈`);
+      console.log("Stochastic:", lastStochastic);
+      console.log("RSI:", latestRSIValues);
+      console.log("Bollinger Band value:", marketValue);
+      if(isEMAUptrend){
+        console.log(`📈Uptrend Market detected`);
+      }else if(isEMADowntrend){
+        console.log(`📉Downtrend market detected`);
+      }else{
+        console.log(`Trend not clear`);
+      }
+
+
+      if (isRSIBuy && isEMAUptrend && !isRSIBuyLimit) {
+        console.log("---------------------------");
+        console.log(`🟢🔰🟢BUY Signal Triggered at ${currentTime}🟢🔰🟢`);
+        console.log("---------------------------");
+        return "BUY";
+      }else if(!isRSIBuy || !isEMAUptrend || isRSIBuyLimit){
+        console.log(`🛑❌BUY Signal conditions not met at${currentTime}❌🛑`)
+      }
+    }
+
+    // ✅ Check SELL conditions
+    if (lastK < 20 && !stochasticState.hasCrossedBelow20) {
+      stochasticState.hasCrossedBelow20 = true;
+      console.log(`📉📉 Stochastic crossed below 20 at ${currentTime}📉📉`);
+    }
+
+    if (stochasticState.hasCrossedBelow20 && lastK > 30 && !stochasticState.hasRisenAbove30) {
+      stochasticState.hasRisenAbove30 = true;
+      console.log(`📈📈 Stochastic rose above 30 after crossing below at ${currentTime}📈📈`);
+    }
+
+    if (stochasticState.hasCrossedBelow20 && stochasticState.hasRisenAbove30 && lastK < 20) {
+      
+      // ✅ Confirm RSI & EMA conditions for SELL
+      const isRSISell = latestRSIValues.some(value => value < 47);
+      const isRSISellLimit = latestRSIValues.some(value => value < 40);
+      const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
+      const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
+
+      // Reset state variables
+      stochasticState.hasCrossedAbove80 = false;
+      stochasticState.hasDroppedBelow70 = false;
+      stochasticState.hasCrossedBelow20 = false;
+      stochasticState.hasRisenAbove30 = false;
+      
+      console.log(`📉📉 Stochastic dropped back below 20 after rising above at ${currentTime}📉📉`);
+      console.log("Stochastic:", lastStochastic);
+      console.log("RSI:", latestRSIValues);
+      console.log("Bollinger Band value:", marketValue);
+      if(isEMAUptrend){
+        console.log(`📈Uptrend Market detected`);
+      }else if(isEMADowntrend){
+        console.log(`📉Downtrend market detected`);
+      }else{
+        console.log(`Trend not clear`);
+      }
+
+
+      if (isRSISell && isEMADowntrend && !isRSISellLimit) {
+        console.log("---------------------------");
+        console.log(`🔴🧧🔴 SELL Signal Triggered at ${currentTime}🔴🧧🔴`);
+        console.log("---------------------------");
+        return "SELL";
+      }else if(!isRSISell || !isEMADowntrend || isRSISellLimit){
+        console.log(`🛑❌BUY Signal conditions not met at${currentTime}❌🛑`)
+      }
+    }
+
+  // **SIDEWAYS MARKET STRATEGY**
+  } else if(marketValue > 1.5 && marketValue < 3.5) {
+    // ** SIDEWAY MARKET STRATEGY**
+    if(trend !== "sideways" || trend === null){
+      trend = "sideways";
+      stochasticState.hasCrossedAbove80 = false;
+      stochasticState.hasDroppedBelow70 = false;
+      stochasticState.hasCrossedBelow20 = false;
+      stochasticState.hasRisenAbove30 = false;
+      console.log(`Market Value: ${marketValue}`);
+      console.log('');
+      console.log("-----------------------------------------------------------------");
+      console.log('');
+      console.log(`🚧🚧 Sideways Market Strategy detected at ${currentTime} 🚧🚧`);
+      console.log('');
+      console.log("-----------------------------------------------------------------");
+      console.log('');
+    }
+    // ✅ Check BUY conditions
+    if (lastK < 20 && !stochasticState.hasCrossedBelow20) {
+      stochasticState.hasCrossedBelow20 = true;
+      console.log(`📉📉 Stochastic crossed below 20 at ${currentTime} 📉📉`);
+    }
+
+    if (stochasticState.hasCrossedBelow20 &&  lastK > 20) {
+      console.log(`📈📈 Stochastic rose above 20 after crossing below at ${currentTime} 📈📈`);
+      console.log("Stochastic:", lastStochastic);
+      console.log("RSI:", latestRSIValues);
+      console.log("Bollinger Band:", marketValue);
+
+      // Reset state variables
+      stochasticState.hasCrossedAbove80 = false;
+      stochasticState.hasDroppedBelow70 = false;
+      stochasticState.hasCrossedBelow20 = false;
+      stochasticState.hasRisenAbove30 = false;
+
+      // ✅ Confirm RSI & EMA conditions for BUY
+      const isRSIBuy = latestRSIValues.some(value => value < 48);
+      const isRSIBuyLimit = latestRSIValues.some(value => value < 44);
+
+      if (isRSIBuy && !isRSIBuyLimit && (lastD < 80 || lastD > 20)) {
+        console.log("---------------------------");
+        console.log(`🟢🔰🟢BUY Signal Triggered at ${currentTime}🟢🔰🟢`);
+        console.log("---------------------------");
+        return "BUY";
+      }else if(!isRSIBuy || isRSIBuyLimit || (lastD > 80 || lastD < 20)){
+        console.log(`🛑❌BUY Signal conditions not met at${currentTime}❌🛑`)
+      }
+    }
+
+    // ✅ Check SELL conditions
+    if (lastK > 80 && !stochasticState.hasCrossedAbove80) {
+      stochasticState.hasCrossedAbove80 = true;
+      console.log(`📈📈 Stochastic crossed above 80 at ${currentTime}📈📈`);
+    }
+
+    if (stochasticState.hasCrossedAbove80 && lastK < 80) {
+      console.log(`📉📉 Stochastic went below 80 after crossing above at ${currentTime}📉📉`);
+      console.log("Stochastic:", lastStochastic);
+      console.log("RSI:", latestRSIValues);
+      console.log("Bollinger Band:", marketValue);
+
+      // Reset state variables
+      stochasticState.hasCrossedAbove80 = false;
+      stochasticState.hasDroppedBelow70 = false;
+      stochasticState.hasCrossedBelow20 = false;
+      stochasticState.hasRisenAbove30 = false;
+
+      // ✅ Confirm RSI & EMA conditions for SELL
+      const isRSISell = latestRSIValues.some(value => value > 52);
+      const isRSISellLimit = latestRSIValues.some(value => value > 56);
+
+      if (isRSISell && !isRSISellLimit && (lastD < 80 || lastD > 20)) {
+        console.log("---------------------------");
+        console.log(`🔴🧧🔴 SELL Signal Triggered at ${currentTime}🔴🧧🔴`);
+        console.log("---------------------------");
+        return "SELL";
+      }else if(!isRSISell || isRSISellLimit || (lastD > 80 || lastD < 20)){
+        console.log(`🛑❌BUY Signal conditions not met at${currentTime}❌🛑`)
       }
     }
 
@@ -392,7 +496,7 @@ function checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands) {
   return "HOLD";
 }
 
-function checkKD(stochastic, rsi, bollingerBands){
+function checkKD(stochastic, bollingerBands){
   const now = DateTime.now(); // Current time in seconds
   const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
   if (!stochastic?.length || !rsi?.length || !bollingerBands?.length) {
@@ -404,12 +508,6 @@ function checkKD(stochastic, rsi, bollingerBands){
   const lastStochastic = stochastic[stochastic.length - 1]; 
   const lastK = lastStochastic.k;
   const lastD = lastStochastic.d;
-  const lastRSI = rsi[rsi.length - 1];
-  latestRSIValues.push(lastRSI);
-  // Keep only the last 6 RSI values
-  if (latestRSIValues.length > 6) {
-    latestRSIValues.shift(); // Remove the oldest RSI value
-  }
   const lastBollingerBand = bollingerBands[bollingerBands.length - 1];
 
   const lastBollingerUpper = lastBollingerBand.upper;
@@ -418,7 +516,7 @@ function checkKD(stochastic, rsi, bollingerBands){
   // Determine market trend
   const marketValue = lastBollingerUpper - lastBollingerLower;
   
-  if(marketValue < 1.5){
+  if(marketValue > 1.5){
 
     
     //CHECK BUY CONDITION
@@ -426,12 +524,11 @@ function checkKD(stochastic, rsi, bollingerBands){
       stochasticKD.hasCrossedBelow20 = true;
     }
   
-    if(stochasticKD.hasCrossedBelow20 && lastK > lastD && lastD <=35){
-      console.log(`✅ Stochastic values crossed each other at ${currentTime}`);
+    if(stochasticKD.hasCrossedBelow20 && lastK > lastD){
+      console.log(`📈📉 Stochastic values crossed each other at ${currentTime} 📈📉`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
-      console.log("Upper Bollinger Band:", lastBollingerUpper);
-      console.log("Lower Bollinger Band:", lastBollingerLower);
+      console.log("Bollinger Band:", marketValue);
       
       // Reset state variables
       stochasticKD.hasCrossedAbove80 = false;
@@ -440,13 +537,16 @@ function checkKD(stochastic, rsi, bollingerBands){
       stochasticKD.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI conditions for BUY
-      const isRSIBUY = latestRSIValues.some(value => value < 40);
+      const isRSIBuy = latestRSIValues.some(value => value < 40);
+      const isRSIBuyLimit = latestRSIValues.some(value => value < 25);
 
-      if (isRSIBUY) {
+      if (isRSIBuy && !isRSIBuyLimit && lastD < 35 && lastD > 20) {
         console.log("---------------------------");
-        console.log(`🚨 BUY Signal Triggered at ${currentTime}`);
+        console.log(`🟢🔰🟢BUY Signal Triggered at ${currentTime}🟢🔰🟢`);
         console.log("---------------------------");
         return "BUY";
+      }else if(!isRSIBuy || isRSIBuyLimit || lastD > 35 || lastD < 20 ){
+        console.log(`🛑❌BUY Signal conditions not met at${currentTime}❌🛑`)
       }
   
     }
@@ -456,12 +556,11 @@ function checkKD(stochastic, rsi, bollingerBands){
       stochasticKD.hasCrossedAbove80 = true;
     }
   
-    if(stochasticKD.hasCrossedAbove80 && lastK < lastD && lastD >=65){
-      console.log(`✅ Stochastic values crossed each other at ${currentTime}`);
+    if(stochasticKD.hasCrossedAbove80 && lastK < lastD){
+      console.log(`📈📉 Stochastic values crossed each other at ${currentTime} 📈📉`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
-      console.log("Upper Bollinger Band:", lastBollingerUpper);
-      console.log("Lower Bollinger Band:", lastBollingerLower);
+      console.log("Bollinger Band:", marketValue);
       
       // Reset state variables
       stochasticKD.hasCrossedAbove80 = false;
@@ -470,13 +569,16 @@ function checkKD(stochastic, rsi, bollingerBands){
       stochasticKD.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI conditions for BUY
-      const isRSISELL = latestRSIValues.some(value => value > 60);
+      const isRSISell = latestRSIValues.some(value => value < 60);
+      const isRSISellLimit = latestRSIValues.some(value => value < 75);
 
-      if (isRSISELL) {
+      if (isRSISell && !isRSISellLimit && lastD < 80 && lastD > 65) {
         console.log("---------------------------");
-        console.log(`🚨 SELL Signal Triggered at ${currentTime}`);
+        console.log(`🔴🧧🔴 SELL Signal Triggered at ${currentTime}🔴🧧🔴`);
         console.log("---------------------------");
         return "SELL";
+      }else if(!isRSISell || isRSISellLimit || lastD > 80 || lastD < 65 ){
+        console.log(`🛑❌SELL Signal conditions not met at${currentTime}❌🛑`)
       }
   
     }
@@ -499,15 +601,18 @@ const processMarketData = async () => {
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData = aggregateOHLC(recentPrices);
 
-  if (ohlcData.length < 126) {
-    console.log("Insufficient data for calculations");
-    console.log("OHLC Data Length:", ohlcData.length);
-    return; // Ensure enough data for calculations
-  }
+  if (ohlcData.length < 126) return; // Ensure enough data for calculations
 
   // ✅ Fetch indicator values from the module
   const conditions = await calculateIndicators(ohlcData);
   const { rsi, stochastic, ema9, ema14, ema21, bollingerBands } = conditions;
+
+  const lastRSI = rsi[rsi.length - 1];
+  latestRSIValues.push(lastRSI);
+  // Keep only the last 6 RSI values
+  if (latestRSIValues.length > 6) {
+    latestRSIValues.shift(); // Remove the oldest RSI value
+  }
 
   // ✅ Check trade signal using the calculated values
   const call = checkTradeSignal(stochastic, rsi, ema9, ema14, ema21, bollingerBands);
