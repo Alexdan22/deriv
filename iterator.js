@@ -189,7 +189,7 @@ async function calculateIndicators(prices) {
 // Function to check trade signals based on indicators
 function checkTradeSignal(stochastic, ema9, ema14, ema21, bollingerBands) {
   const now = DateTime.now(); // Current time in seconds
-  if (!stochastic?.length || !rsi?.length || !ema9?.length || !ema14?.length || !ema21?.length || !bollingerBands?.length) {
+  if (!stochastic?.length|| !ema9?.length || !ema14?.length || !ema21?.length || !bollingerBands?.length) {
     console.log("Insufficient indicator values for calculation");
     return "HOLD";
   }
@@ -499,7 +499,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, bollingerBands) {
 function checkKD(stochastic, bollingerBands){
   const now = DateTime.now(); // Current time in seconds
   const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
-  if (!stochastic?.length || !rsi?.length || !bollingerBands?.length) {
+  if (!stochastic?.length || !bollingerBands?.length) {
     console.log("Insufficient indicator values for calculation");
     return "HOLD";
   }
