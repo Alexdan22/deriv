@@ -156,9 +156,6 @@ async function calculateIndicators(prices) {
     console.error('Invalid close prices for Bollinger Bands calculation');
     return;
   }
-
-  // RSI Calculation
-  const rsi = ti.RSI.calculate({ values: closePrices, period: 84 });
   
   // Stochastic Calculation
   const stochastic = ti.Stochastic.calculate({
@@ -172,7 +169,7 @@ async function calculateIndicators(prices) {
   // Bollinger Bands Calculation
   const bollingerBands = ti.BollingerBands.calculate({
       values: closePrices,
-      period: 120,
+      period: 84,
       stdDev: 2
   });
 
@@ -185,7 +182,6 @@ async function calculateIndicators(prices) {
   latestBollingerBands.push(lastBollingerBand);
   
   return {
-      rsi,
       stochastic,
       ema9,
       ema14,
@@ -193,6 +189,54 @@ async function calculateIndicators(prices) {
   };
 }
 
+function calculateRSI(closingPrices, rsiLength) {
+  if (closingPrices.length < rsiLength + 1) {
+    throw new Error("Insufficient data to calculate RSI");
+  }
+
+  // Calculate price changes
+  const changes = [];
+  for (let i = 1; i < closingPrices.length; i++) {
+    changes.push(closingPrices[i] - closingPrices[i - 1]);
+  }
+
+  // Calculate average gains and losses
+  let avgGain = 0;
+  let avgLoss = 0;
+
+  for (let i = 0; i < rsiLength; i++) {
+    const change = changes[i];
+    if (change > 0) {
+      avgGain += change;
+    } else {
+      avgLoss -= change;
+    }
+  }
+
+  avgGain /= rsiLength;
+  avgLoss /= rsiLength;
+
+  // Calculate RSI
+  for (let i = rsiLength; i < changes.length; i++) {
+    const change = changes[i];
+    if (change > 0) {
+      avgGain = (avgGain * (rsiLength - 1) + change) / rsiLength;
+      avgLoss = (avgLoss * (rsiLength - 1)) / rsiLength;
+    } else {
+      avgGain = (avgGain * (rsiLength - 1)) / rsiLength;
+      avgLoss = (avgLoss * (rsiLength - 1) - change) / rsiLength;
+    }
+  }
+
+  if (avgLoss === 0) {
+    return 100;
+  } else if (avgGain === 0) {
+    return 0;
+  } else {
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+  }
+}
 
 // Function to check trade signals based on indicators
 function checkTradeSignal(stochastic, ema9, ema14, ema21) {
@@ -302,7 +346,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
         console.log('');
         return "SELL";
       }else if(!isRSISell || isRSISellLimit || (lastD > 80 || lastD < 20)){
-        console.log(`🛑 ❌ BUY Signal conditions not met at${currentTime} ❌ 🛑`)
+        console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`);
         console.log('');
       }
     }
@@ -424,7 +468,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
         console.log('');
         return "SELL";
       }else if(!isRSISell || !isEMADowntrend || isRSISellLimit){
-        console.log(`🛑 ❌ BUY Signal conditions not met at${currentTime} ❌ 🛑`)
+        console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
         console.log('');
       }
     }
@@ -513,7 +557,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
         console.log('');
         return "SELL";
       }else if(!isRSISell || isRSISellLimit || (lastD > 80 || lastD < 20)){
-        console.log(`🛑 ❌ BUY Signal conditions not met at${currentTime} ❌ 🛑`)
+        console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
         console.log('');
       }
     }
@@ -573,6 +617,7 @@ function checkKD(stochastic){
         return "BUY";
       }else if(!isRSIBuy || isRSIBuyLimit || lastD > 35 || lastD < 20 ){
         console.log(`🛑 ❌ BUY Signal conditions not met at${currentTime} ❌ 🛑`)
+        console.log('');
       }
   
     }
@@ -605,6 +650,7 @@ function checkKD(stochastic){
         return "SELL";
       }else if(!isRSISell || isRSISellLimit || lastD > 80 || lastD < 65 ){
         console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+        console.log('');
       }
   
     }
@@ -626,23 +672,21 @@ const processMarketData = async () => {
 
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData = aggregateOHLC(recentPrices);
-
-  if (ohlcData.length < 126){
-    console.log(`Insufficient data... Data length: ${ohlcData.length}`);
-    return; // Ensure enough data for calculations
-  } 
+  if (ohlcData.length < 126) return; // Ensure enough data for calculations
 
   // ✅ Fetch indicator values from the module
   const conditions = await calculateIndicators(ohlcData);
-  const { rsi, stochastic, ema9, ema14, ema21} = conditions;
+  const { stochastic, ema9, ema14, ema21} = conditions;
   
 
-  const lastRSI = rsi[rsi.length - 1];
+  const lastRSI = calculateRSI(closePrices, 72);
   latestRSIValues.push(lastRSI);
   // Keep only the last 6 RSI values
   if (latestRSIValues.length > 6) {
     latestRSIValues.shift(); // Remove the oldest RSI value
   }
+  
+  
   if (latestBollingerBands.length > 10) {
     latestBollingerBands.shift(); // Remove the oldest RSI value
   }
