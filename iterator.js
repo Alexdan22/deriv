@@ -608,7 +608,7 @@ const processMarketData = async () => {
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData = aggregateOHLC(recentPrices);
 
-  if (ohlcData.length < 12){
+  if (ohlcData.length < 126){
     console.log(`Insufficient data... Data length: ${ohlcData.length}`);
     return; // Ensure enough data for calculations
   } 
