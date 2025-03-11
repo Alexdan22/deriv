@@ -678,7 +678,7 @@ const processMarketData = async () => {
   const conditions = await calculateIndicators(ohlcData);
   const { stochastic, ema9, ema14, ema21} = conditions;
   
-
+  const closePrices = ohlcData.map(c => c.close);
   const lastRSI = calculateRSI(closePrices, 72);
   latestRSIValues.push(lastRSI);
   // Keep only the last 6 RSI values
