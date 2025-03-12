@@ -302,17 +302,17 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = latestRSIValues.some(value => value < 42);
-      const isRSIBuyLimit = latestRSIValues.some(value => value < 33);
+      const isRSIBuy = latestRSIValues.some(value => value < 45);
+      const isRSIBuyLimit = latestRSIValues.some(value => value < 40);
 
-      if (isRSIBuy && (lastD < 80 || lastD > 20) && !isRSIBuyLimit) {
+      if (isRSIBuy && lastD < 80 && lastD > 20 && !isRSIBuyLimit) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime}🟢 🔰 🟢`);
         console.log("---------------------------");
         console.log('');
         return "BUY";
       }else if(!isRSIBuy || isRSIBuyLimit || (lastD > 80 || lastD < 20)){
-        console.log(`🛑 ❌ BUY Signal conditions not met at${currentTime} ❌ 🛑`)
+        console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
         console.log('');
       }
     }
@@ -336,10 +336,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
-      const isRSISell = latestRSIValues.some(value => value > 58);
-      const isRSISellLimit = latestRSIValues.some(value => value > 67);
+      const isRSISell = latestRSIValues.some(value => value > 55);
+      const isRSISellLimit = latestRSIValues.some(value => value > 60);
 
-      if (isRSISell && !isRSISellLimit && (lastD < 80 || lastD > 20) ) {
+      if (isRSISell && !isRSISellLimit && lastD < 80 && lastD > 20  ) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------");
@@ -393,8 +393,8 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
       stochasticState.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = latestRSIValues.some(value => value > 53);
-      const isRSIBuyLimit = latestRSIValues.some(value => value > 60);
+      const isRSIBuy = latestRSIValues.some(value => value > 56);
+      const isRSIBuyLimit = latestRSIValues.some(value => value > 62);
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
@@ -403,9 +403,9 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
       console.log("RSI:", latestRSIValues);
       console.log("Bollinger Band value:", marketValue);
       if(isEMAUptrend){
-        console.log(`📈Uptrend Market detected`);
+        console.log(`📈 Uptrend Market detected`);
       }else if(isEMADowntrend){
-        console.log(`📉Downtrend market detected`);
+        console.log(`📉 Downtrend market detected`);
       }else{
         console.log(`Trend not clear`);
       }
@@ -418,7 +418,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
         console.log('');
         return "BUY";
       }else if(!isRSIBuy || !isEMAUptrend || isRSIBuyLimit){
-        console.log(`🛑 ❌ BUY Signal conditions not met at${currentTime} ❌ 🛑`)
+        console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
         console.log('');
       }
     }
@@ -437,8 +437,8 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
     if (stochasticState.hasCrossedBelow20 && stochasticState.hasRisenAbove30 && lastK < 20) {
       
       // ✅ Confirm RSI & EMA conditions for SELL
-      const isRSISell = latestRSIValues.some(value => value < 47);
-      const isRSISellLimit = latestRSIValues.some(value => value < 40);
+      const isRSISell = latestRSIValues.some(value => value < 44);
+      const isRSISellLimit = latestRSIValues.some(value => value < 38);
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
@@ -453,9 +453,9 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
       console.log("RSI:", latestRSIValues);
       console.log("Bollinger Band value:", marketValue);
       if(isEMAUptrend){
-        console.log(`📈Uptrend Market detected`);
+        console.log(`📈 Uptrend Market detected`);
       }else if(isEMADowntrend){
-        console.log(`📉Downtrend market detected`);
+        console.log(`📉 Downtrend market detected`);
       }else{
         console.log(`Trend not clear`);
       }
@@ -514,17 +514,33 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = latestRSIValues.some(value => value < 48);
-      const isRSIBuyLimit = latestRSIValues.some(value => value < 44);
+      const isRSIBuyLimit = latestRSIValues.some(value => value < 40);
 
-      if (isRSIBuy && !isRSIBuyLimit && (lastD < 80 || lastD > 20)) {
+      if (isRSIBuy && !isRSIBuyLimit && lastD < 80 && lastD > 20 ) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
         console.log("---------------------------");
         console.log('');
         return "BUY";
-      }else if(!isRSIBuy || isRSIBuyLimit || (lastD > 80 || lastD < 20)){
-        console.log(`🛑 ❌ BUY Signal conditions not met at${currentTime} ❌ 🛑`)
-        console.log('');
+      }else if(!isRSIBuy || isRSIBuyLimit || lastD > 80 || lastD < 20){
+        if(!isRSIBuy){
+          //RSI is less than required 
+          console.log(`RSI value is more than 48`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(isRSIBuyLimit){
+          //RSI is more than required
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(lastD > 80){
+          //%D value is more than required
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(lastD < 20){
+          //%D value is less than required
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
     }
 
@@ -548,15 +564,15 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
 
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = latestRSIValues.some(value => value > 52);
-      const isRSISellLimit = latestRSIValues.some(value => value > 56);
+      const isRSISellLimit = latestRSIValues.some(value => value > 60);
 
-      if (isRSISell && !isRSISellLimit && (lastD < 80 || lastD > 20)) {
+      if (isRSISell && !isRSISellLimit &&  lastD < 80 && lastD > 20 ) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------");
         console.log('');
         return "SELL";
-      }else if(!isRSISell || isRSISellLimit || (lastD > 80 || lastD < 20)){
+      }else if(!isRSISell || isRSISellLimit || lastD > 80 || lastD < 20){
         console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
         console.log('');
       }
@@ -607,8 +623,8 @@ function checkKD(stochastic){
       stochasticKD.hasCrossedBelow20 = false;
 
       // ✅ Confirm RSI conditions for BUY
-      const isRSIBuy = latestRSIValues.some(value => value < 40);
-      const isRSIBuyLimit = latestRSIValues.some(value => value < 25);
+      const isRSIBuy = latestRSIValues.some(value => value < 45);
+      const isRSIBuyLimit = latestRSIValues.some(value => value < 35);
 
       if (isRSIBuy && !isRSIBuyLimit && lastD < 35 && lastD > 20) {
         console.log("---------------------------");
@@ -616,7 +632,7 @@ function checkKD(stochastic){
         console.log("---------------------------");
         return "BUY";
       }else if(!isRSIBuy || isRSIBuyLimit || lastD > 35 || lastD < 20 ){
-        console.log(`🛑 ❌ BUY Signal conditions not met at${currentTime} ❌ 🛑`)
+        console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
         console.log('');
       }
   
@@ -640,8 +656,8 @@ function checkKD(stochastic){
       stochasticKD.hasRisenAbove30 = false;
 
       // ✅ Confirm RSI conditions for BUY
-      const isRSISell = latestRSIValues.some(value => value < 60);
-      const isRSISellLimit = latestRSIValues.some(value => value < 75);
+      const isRSISell = latestRSIValues.some(value => value < 55);
+      const isRSISellLimit = latestRSIValues.some(value => value < 65);
 
       if (isRSISell && !isRSISellLimit && lastD < 80 && lastD > 65) {
         console.log("---------------------------");
@@ -834,10 +850,44 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
   const trade = tradesForAccount.get(tradeId);
   if (!trade) return;
-  tradesForAccount.delete(tradeId);
   if (contract.profit < 0) {
-    user.pnl = user.pnl + (contract.profit || 0);
-    user.save();
+    console.log(`[${accountId}] Trade lost, Updating stake`);
+    // 1.15, 2.80, 6.80, 16.50, 40, 97, 236
+    if(trade.stake == 1.15){
+      user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 2.8;
+      user.save();
+    }else if( trade.stake == 2.80){
+      user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 6.8;
+      user.save();
+    }else if (trade.stake == 6.80){
+      user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 16.5;
+      user.save();
+    }else if (trade.stake == 16.50){
+      user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 40;
+      user.save();
+    }else if (trade.stake == 40){
+      user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 97;
+      user.save();
+    }else if (trade.stake == 97){
+      user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 236;
+      user.save();
+    }else if (trade.stake == 236){
+      console.log(`[${accountId}] All Trade lost, Resetting stake`);
+      user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 1.15;
+      user.save();
+    }else{
+      console.log(`[${accountId}] All Trade lost, Resetting stake`);
+      user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 1.15;
+      user.save();
+    }
   }else{
     console.log(`[${accountId}] Profit: ${contract.profit}`);
     
@@ -845,6 +895,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance found, Adding up to balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 1.15;
       user.balance = newBalance
       user.dynamicBalance = newBalance
       user.save();
@@ -852,10 +903,12 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance not found, deducting from balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
+      user.stake = 1.15;
       user.balance = newBalance
       user.save();
     }
   }
+  tradesForAccount.delete(tradeId);
 
 };
 
