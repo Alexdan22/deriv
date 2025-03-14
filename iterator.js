@@ -1038,40 +1038,40 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   if (!trade) return;
   if (contract.profit < 0) {
     console.log(`[${accountId}] Trade lost, Updating stake`);
-    // 1.15, 2.80, 6.80, 16.50, 40, 97, 236
-    if(trade.stake == 1.15){
+    // 1, 2.7, 7.2, 19.2, 51.2, 136.50, 364
+    if(trade.stake == 1){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 2.8;
+      user.stake = 2.7;
       user.save();
-    }else if( trade.stake == 2.80){
+    }else if( trade.stake == 2.7){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 6.8;
+      user.stake = 7.2;
       user.save();
-    }else if (trade.stake == 6.80){
+    }else if (trade.stake == 7.2){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 16.5;
+      user.stake = 19.2;
       user.save();
-    }else if (trade.stake == 16.50){
+    }else if (trade.stake == 19.2){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 40;
+      user.stake = 51.2;
       user.save();
-    }else if (trade.stake == 40){
+    }else if (trade.stake == 51.2){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 97;
+      user.stake = 136.5;
       user.save();
-    }else if (trade.stake == 97){
+    }else if (trade.stake == 136.5){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 236;
+      user.stake = 364;
       user.save();
-    }else if (trade.stake == 236){
+    }else if (trade.stake == 364){
       console.log(`[${accountId}] All Trade lost, Resetting stake`);
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1.15;
+      user.stake = 1;
       user.save();
     }else{
       console.log(`[${accountId}] All Trade lost, Resetting stake`);
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1.15;
+      user.stake = 1;
       user.save();
     }
   }else{
@@ -1081,7 +1081,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance found, Adding up to balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1.15;
+      user.stake = 1;
       user.balance = newBalance
       user.dynamicBalance = newBalance
       user.save();
@@ -1089,7 +1089,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance not found, deducting from balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1.15;
+      user.stake = 1;
       user.balance = newBalance
       user.save();
     }
@@ -1130,7 +1130,7 @@ const setProfit = async (ws, response) => {
       name: fullname,
       balance,
       dynamicBalance: balance, // Dynamic balance for stoploss calculation
-      stake: 1.15, 
+      stake: 1, 
       uniqueDate,
       apiToken,
       date: `${date}-${month}-${year}`,
