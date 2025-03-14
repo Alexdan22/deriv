@@ -270,6 +270,9 @@ function calculateRSI(closingPrices, rsiLength) {
 
 // Function to detect market type
 function detectMarketType(prices, period = 20, percentageThreshold = 75, bbwThreshold = 3.5) {
+  
+  const now = DateTime.now(); // Current time in seconds
+  const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
   if (prices.length < period) return "UNKNOWN";
 
   // Bollinger Bands Calculation
