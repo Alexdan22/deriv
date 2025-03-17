@@ -423,7 +423,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
   
   
 
-if(trend == 'HIGHLY_VOLATILE'){
+  if(trend == 'HIGHLY_VOLATILE'){
     
     // ✅ Check BUY conditions
     if (lastK < 20 && (stochasticState.condition != 20 || !stochasticState.hasCrossedBelow20)) {
@@ -448,15 +448,39 @@ if(trend == 'HIGHLY_VOLATILE'){
       const isRSIBuy = latestRSIValues.some(value => value < 45);
       const isRSIBuyLimit = latestRSIValues.some(value => value < 38);
 
-      if (isRSIBuy && lastD < 80 && lastD > 20 && !isRSIBuyLimit) {
+      if (isRSIBuy && lastD < 80 && lastD > 20 && !isRSIBuyLimit && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime}🟢 🔰 🟢`);
         console.log("---------------------------");
         console.log('');
         return "BUY";
-      }else if(!isRSIBuy || isRSIBuyLimit || (lastD > 80 || lastD < 20)){
-        console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
-        console.log('');
+      }else if(!isRSIBuy || isRSIBuyLimit || (lastD > 80 || lastD < 20) || marketValue < 2){
+        if(!isRSIBuy){
+          //RSI is less than required 
+          console.log(`RSI value is more than 45`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(isRSIBuyLimit){
+          //RSI is more than required
+          console.log(`RSI value is less than 38`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(lastD > 80){
+          //%D value is more than required
+          console.log(`Stochastic %D value is more than 80`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(lastD < 20){
+          //%D value is less than required
+          console.log(`Stochastic %D value is less than 20`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(marketValue < 2){
+          //Market value is less than required
+          console.log(`Bollinger Band value is less than 2`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
     }
 
@@ -482,15 +506,39 @@ if(trend == 'HIGHLY_VOLATILE'){
       const isRSISell = latestRSIValues.some(value => value > 55);
       const isRSISellLimit = latestRSIValues.some(value => value > 62);
 
-      if (isRSISell && !isRSISellLimit && lastD < 80 && lastD > 20  ) {
+      if (isRSISell && !isRSISellLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------");
         console.log('');
         return "SELL";
-      }else if(!isRSISell || isRSISellLimit || (lastD > 80 || lastD < 20)){
-        console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`);
-        console.log('');
+      }else if(!isRSISell || isRSISellLimit || (lastD > 80 || lastD < 20) || marketValue < 2){
+        if(!isRSISell){
+          //RSI is less than required 
+          console.log(`RSI value is less than 55`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(isRSISellLimit){
+          //RSI is more than required
+          console.log(`RSI value is more than 62`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(lastD > 80){
+          //%D value is more than required
+          console.log(`Stochastic %D value is more than 80`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(lastD < 20){
+          //%D value is less than required
+          console.log(`Stochastic %D value is less than 20`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(marketValue < 2){
+          //Market value is less than required
+          console.log(`Bollinger Band value is less than 2`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
     }
 
@@ -534,15 +582,34 @@ if(trend == 'HIGHLY_VOLATILE'){
       }
 
 
-      if (isRSIBuy && isEMAUptrend && !isRSIBuyLimit) {
+      if (isRSIBuy && isEMAUptrend && !isRSIBuyLimit  && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
         console.log("---------------------------");
         console.log('');
         return "BUY";
-      }else if(!isRSIBuy || !isEMAUptrend || isRSIBuyLimit){
-        console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
-        console.log('');
+      }else if(!isRSIBuy || !isEMAUptrend || isRSIBuyLimit || marketValue < 2){
+        if(!isRSIBuy){
+          //RSI is less than required 
+          console.log(`RSI value is less than 57`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(isRSIBuyLimit){
+          //RSI is more than required
+          console.log(`RSI value is more than 64`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(!isEMAUptrend){
+          //EMAs are not in uptrend
+          console.log(`EMAs are not in uptrend`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(marketValue < 2){
+          //Market value is less than required
+          console.log(`Bollinger Band value is less than 2`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
     }
 
@@ -582,15 +649,34 @@ if(trend == 'HIGHLY_VOLATILE'){
       }
 
 
-      if (isRSISell && isEMADowntrend && !isRSISellLimit) {
+      if (isRSISell && isEMADowntrend && !isRSISellLimit  && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------");
         console.log('');
         return "SELL";
-      }else if(!isRSISell || !isEMADowntrend || isRSISellLimit){
-        console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
-        console.log('');
+      }else if(!isRSISell || !isEMADowntrend || isRSISellLimit || marketValue < 2){
+        if(!isRSIBuy){
+          //RSI is less than required 
+          console.log(`RSI value is more than 43`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(isRSIBuyLimit){
+          //RSI is more than required
+          console.log(`RSI value is less than 36`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(!isEMADowntrend){
+          //EMAs are not in uptrend
+          console.log(`EMAs are not in Downtrend`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(marketValue < 2){
+          //Market value is less than required
+          console.log(`Bollinger Band value is less than 2`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
     }
 
@@ -634,15 +720,34 @@ if(trend == 'HIGHLY_VOLATILE'){
       }
 
 
-      if (isRSIBuy && isEMAUptrend && !isRSIBuyLimit) {
+      if (isRSIBuy && isEMAUptrend && !isRSIBuyLimit  && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
         console.log("---------------------------");
         console.log('');
         return "BUY";
-      }else if(!isRSIBuy || !isEMAUptrend || isRSIBuyLimit){
-        console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
-        console.log('');
+      }else if(!isRSIBuy || !isEMAUptrend || isRSIBuyLimit || marketValue < 2){
+        if(!isRSIBuy){
+          //RSI is less than required 
+          console.log(`RSI value is less than 54`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(isRSIBuyLimit){
+          //RSI is more than required
+          console.log(`RSI value is more than 60`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(!isEMAUptrend){
+          //EMAs are not in uptrend
+          console.log(`EMAs are not in uptrend`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(marketValue < 2){
+          //Market value is less than required
+          console.log(`Bollinger Band value is less than 2`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
     }
 
@@ -682,15 +787,34 @@ if(trend == 'HIGHLY_VOLATILE'){
       }
 
 
-      if (isRSISell && isEMADowntrend && !isRSISellLimit) {
+      if (isRSISell && isEMADowntrend && !isRSISellLimit && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------");
         console.log('');
         return "SELL";
-      }else if(!isRSISell || !isEMADowntrend || isRSISellLimit){
-        console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
-        console.log('');
+      }else if(!isRSISell || !isEMADowntrend || isRSISellLimit || marketValue < 2){
+        if(!isRSIBuy){
+          //RSI is less than required 
+          console.log(`RSI value is more than 46`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(isRSIBuyLimit){
+          //RSI is more than required
+          console.log(`RSI value is less than 40`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(!isEMADowntrend){
+          //EMAs are not in uptrend
+          console.log(`EMAs are not in Downtrend`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(marketValue < 2){
+          //Market value is less than required
+          console.log(`Bollinger Band value is less than 2`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
     }
 
@@ -719,28 +843,36 @@ if(trend == 'HIGHLY_VOLATILE'){
       const isRSIBuy = latestRSIValues.some(value => value < 49);
       const isRSIBuyLimit = latestRSIValues.some(value => value < 43);
 
-      if (isRSIBuy && !isRSIBuyLimit && lastD < 80 && lastD > 20 ) {
+      if (isRSIBuy && !isRSIBuyLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
         console.log("---------------------------");
         console.log('');
         return "BUY";
-      }else if(!isRSIBuy || isRSIBuyLimit || lastD > 80 || lastD < 20){
+      }else if(!isRSIBuy || isRSIBuyLimit || lastD > 80 || lastD < 20 || marketValue < 2){
         if(!isRSIBuy){
           //RSI is less than required 
-          console.log(`RSI value is more than 48`);
+          console.log(`RSI value is more than 49`);
           console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
           console.log('');
         }else if(isRSIBuyLimit){
           //RSI is more than required
+          console.log(`RSI value is less than 43`);
           console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
           console.log('');
         }else if(lastD > 80){
           //%D value is more than required
+          console.log(`Stochastic %D value is more than 80`);
           console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
           console.log('');
         }else if(lastD < 20){
           //%D value is less than required
+          console.log(`Stochastic %D value is less than 20`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(marketValue < 2){
+          //Market value is less than required
+          console.log(`Bollinger Band value is less than 2`);
           console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
           console.log('');
         }
@@ -767,15 +899,39 @@ if(trend == 'HIGHLY_VOLATILE'){
       const isRSISell = latestRSIValues.some(value => value > 51);
       const isRSISellLimit = latestRSIValues.some(value => value > 57);
 
-      if (isRSISell && !isRSISellLimit &&  lastD < 80 && lastD > 20 ) {
+      if (isRSISell && !isRSISellLimit &&  lastD < 80 && lastD > 20  && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------");
         console.log('');
         return "SELL";
-      }else if(!isRSISell || isRSISellLimit || lastD > 80 || lastD < 20){
-        console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
-        console.log('');
+      }else if(!isRSISell || isRSISellLimit || lastD > 80 || lastD < 20 || marketValue < 2){
+        if(!isRSISell){
+          //RSI is less than required 
+          console.log(`RSI value is less than 51`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(isRSISellLimit){
+          //RSI is more than required
+          console.log(`RSI value is more than 57`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(lastD > 80){
+          //%D value is more than required
+          console.log(`Stochastic %D value is more than 80`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(lastD < 20){
+          //%D value is less than required
+          console.log(`Stochastic %D value is less than 20`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(marketValue < 2){
+          //Market value is less than required
+          console.log(`Bollinger Band value is less than 2`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
     }
 
@@ -833,8 +989,27 @@ function checkKD(stochastic){
         console.log("---------------------------");
         return "BUY";
       }else if(!isRSIBuy || isRSIBuyLimit || lastD > 35 || lastD < 17 ){
-        console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
-        console.log('');
+        if(!isRSIBuy){
+          //RSI is less than required 
+          console.log(`RSI value is more than 38`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(isRSIBuyLimit){
+          //RSI is more than required
+          console.log(`RSI value is less than 25`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(lastD > 35){
+          //%D value is more than required
+          console.log(`Stochastic %D value is more than 35`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }else if(lastD < 17){
+          //%D value is less than required
+          console.log(`Stochastic %D value is less than 17`);
+          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
+          console.log('');
+        }
       }
   
     }
@@ -864,8 +1039,27 @@ function checkKD(stochastic){
         console.log("---------------------------");
         return "SELL";
       }else if(!isRSISell || isRSISellLimit || lastD > 83 || lastD < 65 ){
-        console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
-        console.log('');
+        if(!isRSISell){
+          //RSI is less than required 
+          console.log(`RSI value is less than 62`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(isRSISellLimit){
+          //RSI is more than required
+          console.log(`RSI value is more than 75`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(lastD > 83){
+          //%D value is more than required
+          console.log(`Stochastic %D value is more than 83`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }else if(lastD < 65){
+          //%D value is less than required
+          console.log(`Stochastic %D value is less than 65`);
+          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
+          console.log('');
+        }
       }
   
     }
