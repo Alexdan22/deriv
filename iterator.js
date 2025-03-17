@@ -656,12 +656,12 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
         console.log('');
         return "SELL";
       }else if(!isRSISell || !isEMADowntrend || isRSISellLimit || marketValue < 2){
-        if(!isRSIBuy){
+        if(!isRSISell){
           //RSI is less than required 
           console.log(`RSI value is more than 43`);
           console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
           console.log('');
-        }else if(isRSIBuyLimit){
+        }else if(isRSISellLimit){
           //RSI is more than required
           console.log(`RSI value is less than 36`);
           console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
@@ -794,12 +794,12 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
         console.log('');
         return "SELL";
       }else if(!isRSISell || !isEMADowntrend || isRSISellLimit || marketValue < 2){
-        if(!isRSIBuy){
+        if(!isRSISell){
           //RSI is less than required 
           console.log(`RSI value is more than 46`);
           console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
           console.log('');
-        }else if(isRSIBuyLimit){
+        }else if(isRSISellLimit){
           //RSI is more than required
           console.log(`RSI value is less than 40`);
           console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
