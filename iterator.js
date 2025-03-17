@@ -87,6 +87,8 @@ let latestBollingerBands = []; //Array to store the latest 10 Bollinger band val
 const stochasticState = {
   condition: 0,
   hasDroppedBelow70: false,
+  hasCrossedAbove80: false,
+  hasCrossedBelow20: false,
   hasRisenAbove30: false
 };
 let wsMap = new Map(); // Store WebSocket connections
@@ -429,7 +431,12 @@ if(trend == 'HIGHLY_VOLATILE'){
       console.log(`📉📉 Stochastic crossed below 20 at ${currentTime}📉📉`);
     }
 
-    if (stochasticState.condition == 20 &&  lastK > 20) {
+    if (lastK > 20 && stochasticState.hasCrossedBelow20) {
+      stochasticState.hasCrossedBelow20 = false;
+    }
+    
+
+    if (stochasticState.condition == 20 &&  lastK > 20 && !stochasticState.hasCrossedBelow20) {
       console.log(`📈📈 Stochastic rose above 20 after crossing below at ${currentTime}📈📈`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
@@ -438,6 +445,7 @@ if(trend == 'HIGHLY_VOLATILE'){
       // Reset state variables
       stochasticState.hasDroppedBelow70 = false;
       stochasticState.hasRisenAbove30 = false;
+      stochasticState.hasCrossedBelow20 = true;
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = latestRSIValues.some(value => value < 45);
@@ -461,7 +469,11 @@ if(trend == 'HIGHLY_VOLATILE'){
       console.log(`📈 📈 Stochastic crossed above 80 at ${currentTime} 📈 📈`);
     }
 
-    if (stochasticState.condition == 80 && lastK < 80) {
+    if (lastK < 80 && stochasticState.hasCrossedAbove80) {
+      stochasticState.hasCrossedAbove80 = false;
+    }
+
+    if (stochasticState.condition == 80 && lastK < 80 && !stochasticState.hasCrossedAbove80) {
       console.log(`📉 📉 Stochastic went below 80 at ${currentTime} 📉 📉`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
@@ -470,6 +482,7 @@ if(trend == 'HIGHLY_VOLATILE'){
       // Reset state variables
       stochasticState.hasDroppedBelow70 = false;
       stochasticState.hasRisenAbove30 = false;
+      stochasticState.hasCrossedAbove80 = true;
 
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = latestRSIValues.some(value => value > 55);
@@ -696,7 +709,12 @@ if(trend == 'HIGHLY_VOLATILE'){
       console.log(`📉 📉 Stochastic crossed below 20 at ${currentTime} 📉 📉`);
     }
 
-    if (stochasticState.condition == 20 &&  lastK > 20) {
+    if (lastK > 20 && stochasticState.hasCrossedBelow20) {
+      stochasticState.hasCrossedBelow20 = false;
+    }
+
+
+    if (stochasticState.condition == 20 &&  lastK > 20 && !stochasticState.hasCrossedBelow20) {
       console.log(`📈 📈 Stochastic rose above 20 after crossing below at ${currentTime} 📈 📈`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
@@ -705,6 +723,7 @@ if(trend == 'HIGHLY_VOLATILE'){
       // Reset state variables
       stochasticState.hasDroppedBelow70 = false;
       stochasticState.hasRisenAbove30 = false;
+      stochasticState.hasCrossedBelow20 = true;
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = latestRSIValues.some(value => value < 49);
@@ -744,7 +763,11 @@ if(trend == 'HIGHLY_VOLATILE'){
       console.log(`📈 📈 Stochastic crossed above 80 at ${currentTime} 📈 📈`);
     }
 
-    if (stochasticState.condition == 80 && lastK < 80) {
+    if (lastK < 80 && stochasticState.hasCrossedAbove80) {
+      stochasticState.hasCrossedAbove80 = false;
+    }
+
+    if (stochasticState.condition == 80 && lastK < 80 && !stochasticState.hasCrossedAbove80) {
       console.log(`📉 📉 Stochastic went below 80 at ${currentTime} 📉 📉`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
@@ -753,6 +776,7 @@ if(trend == 'HIGHLY_VOLATILE'){
       // Reset state variables
       stochasticState.hasDroppedBelow70 = false;
       stochasticState.hasRisenAbove30 = false;
+      stochasticState.hasCrossedAbove80 = true;
 
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = latestRSIValues.some(value => value > 51);
@@ -909,6 +933,8 @@ const processMarketData = async () => {
     // Reset state variables after placing a trade
     stochasticState.hasDroppedBelow70 = false;
     stochasticState.hasRisenAbove30 = false;
+    stochasticState.hasCrossedAbove80 = false;
+    stochasticState.hasCrossedBelow20 = false;
 
     API_TOKENS.forEach(accountId => {
       const ws = wsMap.get(accountId);
