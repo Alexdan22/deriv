@@ -426,13 +426,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
 if(trend == 'HIGHLY_VOLATILE'){
     
     // ✅ Check BUY conditions
-    if (lastK < 20 && stochasticState.condition != 20) {
+    if (lastK < 20 && (stochasticState.condition != 20 || !stochasticState.hasCrossedBelow20)) {
       stochasticState.condition = 20;
-      console.log(`📉📉 Stochastic crossed below 20 at ${currentTime}📉📉`);
-    }
-
-    if (lastK < 20 && !stochasticState.hasCrossedBelow20) {
       stochasticState.hasCrossedBelow20 = true;
+      console.log(`📉📉 Stochastic crossed below 20 at ${currentTime}📉📉`);
     }
     
 
@@ -464,16 +461,13 @@ if(trend == 'HIGHLY_VOLATILE'){
     }
 
     // ✅ Check SELL conditions
-    if (lastK > 80 && stochasticState.condition != 80) {
+    if (lastK > 80 && (stochasticState.condition != 80 || !stochasticState.hasCrossedAbove80)) {
       stochasticState.condition = 80;
+      stochasticState.hasCrossedAbove80 = true;
       console.log(`📈 📈 Stochastic crossed above 80 at ${currentTime} 📈 📈`);
     }
 
-    if (lastK > 80 && !stochasticState.hasCrossedAbove80) {
-      stochasticState.hasCrossedAbove80 = true;
-    }
-
-    if (stochasticState.condition == 80 && lastK < 80 && stochasticState.hasCrossedAbove80) {
+    if (lastK < 80 && stochasticState.hasCrossedAbove80) {
       console.log(`📉 📉 Stochastic went below 80 at ${currentTime} 📉 📉`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
@@ -704,17 +698,13 @@ if(trend == 'HIGHLY_VOLATILE'){
     // ** SIDEWAY MARKET STRATEGY**
     
     // ✅ Check BUY conditions
-    if (lastK < 20 && stochasticState.condition != 20) {
+    if (lastK < 20 && (stochasticState.condition != 20 || !stochasticState.hasCrossedBelow20)) {
       stochasticState.condition = 20;
+      stochasticState.hasCrossedBelow20 = true;
       console.log(`📉 📉 Stochastic crossed below 20 at ${currentTime} 📉 📉`);
     }
 
-    if (lastK < 20 && !stochasticState.hasCrossedBelow20) {
-      stochasticState.hasCrossedBelow20 = true;
-    }
-
-
-    if (stochasticState.condition == 20 &&  lastK > 20 && stochasticState.hasCrossedBelow20) {
+    if (lastK > 20 && stochasticState.hasCrossedBelow20) {
       console.log(`📈 📈 Stochastic rose above 20 at ${currentTime} 📈 📈`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
@@ -758,24 +748,19 @@ if(trend == 'HIGHLY_VOLATILE'){
     }
 
     // ✅ Check SELL conditions
-    if (lastK > 80 && stochasticState.condition != 80) {
+    if (lastK > 80 && (stochasticState.condition != 80 ||  !stochasticState.hasCrossedAbove80)) {
       stochasticState.condition = 80;
+      stochasticState.hasCrossedAbove80 = true;
       console.log(`📈 📈 Stochastic crossed above 80 at ${currentTime} 📈 📈`);
     }
 
-    if (lastK > 80 && !stochasticState.hasCrossedAbove80) {
-      stochasticState.hasCrossedAbove80 = true;
-    }
-
-    if (stochasticState.condition == 80 && lastK < 80 && stochasticState.hasCrossedAbove80) {
+    if ( lastK < 80 && stochasticState.hasCrossedAbove80) {
       console.log(`📉 📉 Stochastic went below 80 at ${currentTime} 📉 📉`);
       console.log("Stochastic:", lastStochastic);
       console.log("RSI:", latestRSIValues);
       console.log("Bollinger Band:", marketValue);
 
       // Reset state variables
-      stochasticState.hasDroppedBelow70 = false;
-      stochasticState.hasRisenAbove30 = false;
       stochasticState.hasCrossedAbove80 = false;
 
       // ✅ Confirm RSI & EMA conditions for SELL
