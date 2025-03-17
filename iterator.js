@@ -594,7 +594,7 @@ if(trend == 'HIGHLY_VOLATILE'){
       }
     }
 
-  }else if (trend == 'SLOW_TRENDING') {
+  }else if (trend == 'SLOW_TREND') {
     // **TRENDING MARKET STRATEGY**
 
 
