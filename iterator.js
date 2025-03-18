@@ -446,7 +446,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = latestRSIValues.some(value => value < 45);
-      const isRSIBuyLimit = latestRSIValues.some(value => value < 38);
+      const isRSIBuyLimit = latestRSIValues.some(value => value < 40);
 
       if (isRSIBuy && lastD < 80 && lastD > 20 && !isRSIBuyLimit && marketValue > 2) {
         console.log("---------------------------");
@@ -462,7 +462,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
           console.log('');
         }else if(isRSIBuyLimit){
           //RSI is more than required
-          console.log(`RSI value is less than 38`);
+          console.log(`RSI value is less than 40`);
           console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
           console.log('');
         }else if(lastD > 80){
@@ -504,7 +504,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
 
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = latestRSIValues.some(value => value > 55);
-      const isRSISellLimit = latestRSIValues.some(value => value > 62);
+      const isRSISellLimit = latestRSIValues.some(value => value > 60);
 
       if (isRSISell && !isRSISellLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
         console.log("---------------------------");
@@ -520,7 +520,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
           console.log('');
         }else if(isRSISellLimit){
           //RSI is more than required
-          console.log(`RSI value is more than 62`);
+          console.log(`RSI value is more than 60`);
           console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
           console.log('');
         }else if(lastD > 80){
@@ -980,7 +980,7 @@ function checkKD(stochastic){
       stochasticState.hasCrossedBelow20 = false;
 
       // ✅ Confirm RSI conditions for BUY
-      const isRSIBuy = latestRSIValues.some(value => value < 38);
+      const isRSIBuy = latestRSIValues.some(value => value < 40);
       const isRSIBuyLimit = latestRSIValues.some(value => value < 25);
 
       if (isRSIBuy && !isRSIBuyLimit && lastD < 35 && lastD > 17) {
@@ -1030,8 +1030,8 @@ function checkKD(stochastic){
       stochasticState.hasCrossedBelow20 = false;
 
       // ✅ Confirm RSI conditions for BUY
-      const isRSISell = latestRSIValues.some(value => value < 62);
-      const isRSISellLimit = latestRSIValues.some(value => value < 75);
+      const isRSISell = latestRSIValues.some(value => value > 60);
+      const isRSISellLimit = latestRSIValues.some(value => value > 75);
 
       if (isRSISell && !isRSISellLimit && lastD < 83 && lastD > 65) {
         console.log("---------------------------");
