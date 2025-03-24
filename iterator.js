@@ -305,95 +305,95 @@ function detectMarketType(prices, period = 20, percentageThreshold = 75, bbwThre
   const bbw = bbValues[bbValues.length - 1].upper - bbValues[bbValues.length - 1].lower;
 
 
-  // Decision Making
-  if (bbw > 5 && bbw < 10) {
 
-    if(trend !== "TRENDING" || trend === null){
-      trend = "TRENDING";
-      stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow70 = false;
-      stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove30 = false;
-      console.log('');
-      console.log('');
-      console.log("-----------------------------------------------------------------");
-      console.log('');
-      console.log('');
-      console.log(` 🔥 🔥 Trending Market Strategy detected at ${currentTime} 🔥 🔥`);
-      console.log('');
-      console.log('');
-      console.log("-----------------------------------------------------------------");
-      console.log('');
-      console.log('');
-    }
-      return;  // Strong trend when BBW is large
-  } 
+  //Trending Market and Sideway Market Strategy
 
-  if (bbw > 10) {
-    // ** SIDEWAY MARKET STRATEGY**
-    if(trend !== "HIGHLY_VOLATILE" || trend === null){
-      trend = "HIGHLY_VOLATILE";
-      stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow70 = false;
-      stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove30 = false;
-      console.log('');
-      console.log('');
-      console.log("-----------------------------------------------------------------");
-      console.log('');
-      console.log('');
-      console.log(`⚡ ⚡Highly Volatile Sideways Market Strategy detected at ${currentTime}⚡ ⚡`);
-      console.log('');
-      console.log('');
-      console.log("-----------------------------------------------------------------");
-      console.log('');
-      console.log('');
-    }
-    return;
-  }
-  
   if (abovePercentage >= percentageThreshold || belowPercentage >= percentageThreshold) {
-
-    if(trend !== "SLOW_TREND" || trend === null){
-      trend = "SLOW_TREND";
-      stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasDroppedBelow70 = false;
-      stochasticState.hasCrossedBelow20 = false;
-      stochasticState.hasRisenAbove30 = false;
-      console.log('');
-      console.log('');
-      console.log("-----------------------------------------------------------------");
-      console.log('');
-      console.log('');
-      console.log(` 🔥 Slow Trend Market Strategy detected at ${currentTime}  🔥`);
-      console.log('');
-      console.log('');
-      console.log("-----------------------------------------------------------------");
-      console.log('');
-      console.log('');
-    }
+    if(bbw > 5){
+      if(trend !== "TRENDING" || trend === null){
+          trend = "TRENDING";
+          stochasticState.hasCrossedAbove80 = false;
+          stochasticState.hasDroppedBelow70 = false;
+          stochasticState.hasCrossedBelow20 = false;
+          stochasticState.hasRisenAbove30 = false;
+          console.log('');
+          console.log('');
+          console.log("-----------------------------------------------------------------");
+          console.log('');
+          console.log('');
+          console.log(` 🔥 🔥 Trending Market Strategy detected at ${currentTime} 🔥 🔥`);
+          console.log('');
+          console.log('');
+          console.log("-----------------------------------------------------------------");
+          console.log('');
+          console.log('');
+      }
+      return;  // Strong trend when BBW is large
+    }else{
+      if(trend !== "SLOW_TREND" || trend === null){
+        trend = "SLOW_TREND";
+        stochasticState.hasCrossedAbove80 = false;
+        stochasticState.hasDroppedBelow70 = false;
+        stochasticState.hasCrossedBelow20 = false;
+        stochasticState.hasRisenAbove30 = false;
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+        console.log(` 🔥 Slow Trend Market Strategy detected at ${currentTime}  🔥`);
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+      }
       return;  // Price consistently on one side but with low volatility
+    }
+  }else{
+    if(bbw > 5){
+      // ** SIDEWAY MARKET STRATEGY**
+      if(trend !== "HIGHLY_VOLATILE" || trend === null){
+        trend = "HIGHLY_VOLATILE";
+        stochasticState.hasCrossedAbove80 = false;
+        stochasticState.hasDroppedBelow70 = false;
+        stochasticState.hasCrossedBelow20 = false;
+        stochasticState.hasRisenAbove30 = false;
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+        console.log(`⚡ ⚡Highly Volatile Sideways Market Strategy detected at ${currentTime}⚡ ⚡`);
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+      }
+      return;
+    }else{
+      if(trend !== "SIDEWAYS" || trend === null){
+        trend = "SIDEWAYS";
+        stochasticState.hasCrossedAbove80 = false;
+        stochasticState.hasDroppedBelow70 = false;
+        stochasticState.hasCrossedBelow20 = false;
+        stochasticState.hasRisenAbove30 = false;
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+        console.log(`🚧 🚧 Sideways Market Strategy detected at ${currentTime} 🚧 🚧`);
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+      }
+      return;  // Default fallback
+    }
   }
-  
-  if(trend !== "SIDEWAYS" || trend === null){
-    trend = "SIDEWAYS";
-    stochasticState.hasCrossedAbove80 = false;
-    stochasticState.hasDroppedBelow70 = false;
-    stochasticState.hasCrossedBelow20 = false;
-    stochasticState.hasRisenAbove30 = false;
-    console.log('');
-    console.log('');
-    console.log("-----------------------------------------------------------------");
-    console.log('');
-    console.log('');
-    console.log(`🚧 🚧 Sideways Market Strategy detected at ${currentTime} 🚧 🚧`);
-    console.log('');
-    console.log('');
-    console.log("-----------------------------------------------------------------");
-    console.log('');
-    console.log('');
-  }
-  return;  // Default fallback
 }
 
 
@@ -941,136 +941,6 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21) {
   return "HOLD";
 }
 
-function checkKD(stochastic){
-  const now = DateTime.now(); // Current time in seconds
-  const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
-  if (!stochastic?.length) {
-    console.log("Insufficient indicator values for calculation");
-    return "HOLD";
-  }
-
-  //Indicator values 
-  const lastStochastic = stochastic[stochastic.length - 1]; 
-  const lastK = lastStochastic.k;
-  const lastD = lastStochastic.d;
-  const lastBollingerBand = latestBollingerBands[latestBollingerBands.length - 1];
-  const lastBollingerUpper = lastBollingerBand.upper;
-  const lastBollingerLower = lastBollingerBand.lower;
-
-  // Determine market trend
-  const marketValue = lastBollingerUpper - lastBollingerLower;
-  
-  if(marketValue > 2){
-
-    
-    //CHECK BUY CONDITION
-    if(!stochasticState.hasCrossedBelow20 && lastK < 20){
-      stochasticState.hasCrossedBelow20 = true;
-    }
-  
-    if(stochasticState.hasCrossedBelow20 && lastK > lastD){
-      console.log(`📈 📉 Stochastic values crossed each other at ${currentTime} 📈 📉`);
-      console.log("Stochastic:", lastStochastic);
-      console.log("RSI:", latestRSIValues);
-      console.log("Bollinger Band:", marketValue);
-      console.log('')
-      
-      // Reset state variables
-      stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasCrossedBelow20 = false;
-
-      // ✅ Confirm RSI conditions for BUY
-      const isRSIBuy = latestRSIValues.some(value => value < 40);
-      const isRSIBuyLimit = latestRSIValues.some(value => value < 25);
-
-      if (isRSIBuy && !isRSIBuyLimit && lastD < 35 && lastD > 17) {
-        console.log("---------------------------");
-        console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
-        console.log("---------------------------");
-        return "BUY";
-      }else if(!isRSIBuy || isRSIBuyLimit || lastD > 35 || lastD < 17 ){
-        if(!isRSIBuy){
-          //RSI is less than required 
-          console.log(`RSI value is more than 38`);
-          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
-          console.log('');
-        }else if(isRSIBuyLimit){
-          //RSI is more than required
-          console.log(`RSI value is less than 25`);
-          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
-          console.log('');
-        }else if(lastD > 35){
-          //%D value is more than required
-          console.log(`Stochastic %D value is more than 35`);
-          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
-          console.log('');
-        }else if(lastD < 17){
-          //%D value is less than required
-          console.log(`Stochastic %D value is less than 17`);
-          console.log(`🟢 ❌ BUY Signal conditions not met at${currentTime} ❌ 🟢`)
-          console.log('');
-        }
-      }
-  
-    }
-
-    //CHECK SELL CONDITION
-    if(!stochasticState.hasCrossedAbove80 && lastK > 80){
-      stochasticState.hasCrossedAbove80 = true;
-    }
-  
-    if(stochasticState.hasCrossedAbove80 && lastK < lastD){
-      console.log(`📈 📉 Stochastic values crossed each other at ${currentTime} 📈 📉`);
-      console.log("Stochastic:", lastStochastic);
-      console.log("RSI:", latestRSIValues);
-      console.log("Bollinger Band:", marketValue);
-      
-      // Reset state variables
-      stochasticState.hasCrossedAbove80 = false;
-      stochasticState.hasCrossedBelow20 = false;
-
-      // ✅ Confirm RSI conditions for BUY
-      const isRSISell = latestRSIValues.some(value => value > 60);
-      const isRSISellLimit = latestRSIValues.some(value => value > 75);
-
-      if (isRSISell && !isRSISellLimit && lastD < 83 && lastD > 65) {
-        console.log("---------------------------");
-        console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime}🔴 🧧 🔴`);
-        console.log("---------------------------");
-        return "SELL";
-      }else if(!isRSISell || isRSISellLimit || lastD > 83 || lastD < 65 ){
-        if(!isRSISell){
-          //RSI is less than required 
-          console.log(`RSI value is less than 62`);
-          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
-          console.log('');
-        }else if(isRSISellLimit){
-          //RSI is more than required
-          console.log(`RSI value is more than 75`);
-          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
-          console.log('');
-        }else if(lastD > 83){
-          //%D value is more than required
-          console.log(`Stochastic %D value is more than 83`);
-          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
-          console.log('');
-        }else if(lastD < 65){
-          //%D value is less than required
-          console.log(`Stochastic %D value is less than 65`);
-          console.log(`🛑 ❌ SELL Signal conditions not met at${currentTime} ❌ 🛑`)
-          console.log('');
-        }
-      }
-  
-    }
-  }
-
-
-  
-  // Default to HOLD
-  return "HOLD";
-}
-
 
 // Function to process market data
 const processMarketData = async () => {
@@ -1105,28 +975,12 @@ const processMarketData = async () => {
 
   // ✅ Check trade signal using the calculated values
   const call = checkTradeSignal(stochastic, ema9, ema14, ema21);
-  const call2 = checkKD(stochastic);
   
 
   if (call !== "HOLD") {
     // Reset state variables after placing a trade
     stochasticState.hasDroppedBelow70 = false;
     stochasticState.hasRisenAbove30 = false;
-    stochasticState.hasCrossedAbove80 = false;
-    stochasticState.hasCrossedBelow20 = false;
-
-    API_TOKENS.forEach(accountId => {
-      const ws = wsMap.get(accountId);
-      if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
-      } else {
-        console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
-      }
-    });
-  }
-
-  if (call2 !== "HOLD") {
-    // Reset state variables after placing a trade
     stochasticState.hasCrossedAbove80 = false;
     stochasticState.hasCrossedBelow20 = false;
 
