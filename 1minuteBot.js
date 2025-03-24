@@ -80,8 +80,6 @@ const accountTrades = new Map(); // Store trades for each account
 const WEBSOCKET_URL = 'wss://ws.derivws.com/websockets/v3?app_id=67402';
 const PING_INTERVAL = 30000;
 let marketPrices = [];
-let triggerRSI = 5; //Reset every minute
-let latestRSIValues = []; // Array to store the latest 6 RSI values
 let latestBollingerBands = []; //Array to store the latest 10 Bollinger band values
 // State variables for BUY and SELL condition
 const stochasticState = {
@@ -1303,7 +1301,7 @@ function startAtNextMinute() {
   setTimeout(() => {
     createWebSocketConnections(); // Run once at the start of the minute
 
-    setInterval(processMarketData, 10000); // Run every 10 second after that
+    setInterval(processMarketData, 60000); // Run every 60 second after that
   }, delay);
 }
 
