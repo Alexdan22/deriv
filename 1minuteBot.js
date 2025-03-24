@@ -8,7 +8,7 @@ const { DateTime } = require('luxon');
 const ti = require('technicalindicators');
 require('dotenv').config();
 
-const API_TOKENS_ITERATOR = process.env.API_TOKENS_ITERATOR ? process.env.API_TOKENS_ITERATOR.split(',') : [];
+const API_TOKENS_1MINUTE = process.env.API_TOKENS_1MINUTE ? process.env.API_TOKENS_1MINUTE.split(',') : [];
 
 const app = express();
 app.use(bodyParser.json());
@@ -63,10 +63,10 @@ async function getAllApiTokens() {
     
     const dbTokenArray = dbTokens.map((doc) => doc.apiToken); 
 
-    return [...API_TOKENS_ITERATOR, ...dbTokenArray]; // Merge .env tokens and DB tokens
+    return [...API_TOKENS_1MINUTE, ...dbTokenArray]; // Merge .env tokens and DB tokens
   } catch (error) {
     console.error("Error fetching API tokens from DB:", error);
-    return API_TOKENS_ITERATOR;
+    return API_TOKENS_1MINUTE;
   }
 }
 
@@ -80,6 +80,8 @@ const accountTrades = new Map(); // Store trades for each account
 const WEBSOCKET_URL = 'wss://ws.derivws.com/websockets/v3?app_id=67402';
 const PING_INTERVAL = 30000;
 let marketPrices = [];
+let triggerRSI = 5; //Reset every minute
+let latestRSIValues = []; // Array to store the latest 6 RSI values
 let latestBollingerBands = []; //Array to store the latest 10 Bollinger band values
 // State variables for BUY and SELL condition
 const stochasticState = {
@@ -929,7 +931,7 @@ const processMarketData = async () => {
     stochasticState.hasCrossedAbove80 = false;
     stochasticState.hasCrossedBelow20 = false;
 
-    API_TOKENS_ITERATOR.forEach(accountId => {
+    API_TOKENS_1MINUTE.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
         placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
@@ -1310,8 +1312,8 @@ function startAtNextMinute() {
 
 
 
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+app.listen(5000, () => {
+    console.log('Server running on port 5000');
     startAtNextMinute();
   });
   
