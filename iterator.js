@@ -901,7 +901,7 @@ const processMarketData = async () => {
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData10Sec = aggregateOHLC10Sec(recentPrices);
   const ohlcData60Sec = aggregateOHLC60Sec(recentPrices);
-  if (ohlcData10Sec.length < 90) return; // Ensure enough data for calculations
+  if (ohlcData10Sec.length < 241) return; // Ensure enough data for calculations
  
 
   // ✅ Fetch indicator values from the module
