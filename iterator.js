@@ -1090,6 +1090,10 @@ function checkBreakoutSignal(stochastic, rsi){
         console.log(`🛑 ❌ SELL Signal conditions not met at ${currentTime} ❌ 🛑\n`);
     }
   }
+
+
+  // Default to HOLD
+  return "HOLD";
 }
 
 
