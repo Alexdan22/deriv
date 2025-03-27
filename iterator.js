@@ -276,44 +276,100 @@ function calculateExactRSI(source, rsiLength = 14) {
 }
 
 // Function to detect market type
-function detectMarketType(prices, period = 20, percentageThreshold = 75, bbwThreshold = 3.5) {
+function detectMarketType(prices, bbwThreshold = 3.5) {
   
   const now = DateTime.now(); // Current time in seconds
   const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
-  if (prices.length < period) return "UNKNOWN";
+  if (prices.length < 30) return "UNKNOWN";
 
-  // Bollinger Bands Calculation
-  const bbValues = ti.BollingerBands.calculate({
-      values: prices.map(c => c.close ?? c), // Ensure proper close extraction
+
+  function detectTrend(prices, period, percentageThreshold) {
+    // Bollinger Bands Calculation
+    const bbValues = ti.BollingerBands.calculate({
+      values: prices.map(c => c.close ?? c),
       period: period,
       stdDev: 2
-  });
+    });
 
-  if (!bbValues || bbValues.length < period) return "UNKNOWN";
+    // Extract only the latest 'period' candles & their respective BB middle values
+    const recentPrices = prices.slice(-period);
+    const recentBBMiddles = bbValues.slice(-period).map(b => b.middle); 
 
-  // Extract only the latest 'period' candles & their respective BB middle values
-  const recentPrices = prices.slice(-period);
-  const recentBBMiddles = bbValues.slice(-period).map(b => b.middle); 
+    // Extract close prices for the last 'period' candles
+    const closePrices = recentPrices.map(c => c.close ?? c);  
 
-  // Extract close prices for the last 'period' candles
-  const closePrices = recentPrices.map(c => c.close ?? c);  
+    // Compare each candle's close price to its own Bollinger Band middle value
+    let candlesAbove = closePrices.filter((p, i) => p > recentBBMiddles[i]).length;
+    let candlesBelow = closePrices.filter((p, i) => p < recentBBMiddles[i]).length;
 
-  // Compare each candle's close price to its own Bollinger Band middle value
-  let candlesAbove = closePrices.filter((p, i) => p > recentBBMiddles[i]).length;
-  let candlesBelow = closePrices.filter((p, i) => p < recentBBMiddles[i]).length;
+    // Calculate percentages  -- 78% needed for trending market
+    let abovePercentage = (candlesAbove / period) * 100;
+    let belowPercentage = (candlesBelow / period) * 100;
 
-  // Calculate percentages
-  let abovePercentage = (candlesAbove / period) * 100;
-  let belowPercentage = (candlesBelow / period) * 100;
+    if(abovePercentage > percentageThreshold) return "UPTRENDING";
+    if(belowPercentage > percentageThreshold) return "DOWNTRENDING";
+    
 
+    //Default fallback
+    return "SIDEWAYS";
+
+  }
+
+ 
+
+  const bb9 = detectTrend(prices, 9, 78); // 78% needed for trending market
+  const bb20 = detectTrend(prices, 20, 75); // 75% needed for trending market
+  const bb28 = detectTrend(prices, 28, 75); // 75% needed for trending market
+
+  function classifyMarket(bb9, bb20, bb28) {
+      const trendCombo = `${bb9}-${bb20}-${bb28}`;
+
+      const trendingCombinations = new Set([
+          "UPTRENDING-UPTRENDING-UPTRENDING",
+          "UPTRENDING-UPTRENDING-SIDEWAYS",
+          "SIDEWAYS-UPTRENDING-UPTRENDING",
+          "SIDEWAYS-UPTRENDING-SIDEWAYS",
+          "SIDEWAYS-DOWNTRENDING-DOWNTRENDING",
+          "SIDEWAYS-DOWNTRENDING-SIDEWAYS",
+          "DOWNTRENDING-DOWNTRENDING-DOWNTRENDING",
+          "DOWNTRENDING-DOWNTRENDING-SIDEWAYS"
+      ]);
+
+      const sidewaysCombinations = new Set([
+          "SIDEWAYS-SIDEWAYS-UPTRENDING",
+          "UPTRENDING-SIDEWAYS-UPTRENDING",
+          "SIDEWAYS-SIDEWAYS-DOWNTRENDING",
+          "SIDEWAYS-SIDEWAYS-SIDEWAYS",
+          "DOWNTRENDING-SIDEWAYS-DOWNTRENDING",
+          "DOWNTRENDING-SIDEWAYS-SIDEWAYS"
+      ]);
+
+      if (trendingCombinations.has(trendCombo)) {
+          return "TRENDING";
+      } else if (sidewaysCombinations.has(trendCombo)) {
+          return "SIDEWAYS";
+      } else {
+          return "UNKNOWN"; // Fallback in case of unexpected inputs
+      }
+  }
+
+  const marketType = classifyMarket(bb9, bb20, bb28);
+  console.log("Market Condition:", marketType);
+
+// Calculate BBW
+    const bbValues = ti.BollingerBands.calculate({
+        values: prices.map(c => c.close ?? c),
+        period: 20,
+        stdDev: 2
+    });
+
+    if (!bbValues.length) return "UNKNOWN"; // Prevents undefined errors
+    
   // Calculate BBW based on the latest Bollinger Band width
   const bbw = bbValues[bbValues.length - 1].upper - bbValues[bbValues.length - 1].lower;
 
 
-
-  //Trending Market and Sideway Market Strategy
-
-  if (abovePercentage >= percentageThreshold || belowPercentage >= percentageThreshold) {
+  if (marketType === "TRENDING") {
     if(bbw > 5){
       if(trend !== "TRENDING" || trend === null){
           trend = "TRENDING";
@@ -355,7 +411,7 @@ function detectMarketType(prices, period = 20, percentageThreshold = 75, bbwThre
       }
       return;  // Price consistently on one side but with low volatility
     }
-  }else{
+  }else if(marketType === "SIDEWAYS"){
     if(bbw > 5){
       // ** SIDEWAY MARKET STRATEGY**
       if(trend !== "HIGHLY_VOLATILE" || trend === null){
@@ -399,6 +455,8 @@ function detectMarketType(prices, period = 20, percentageThreshold = 75, bbwThre
       return;  // Default fallback
     }
   }
+  /// If no conditions are met, return "UNKNOWN"
+  return "UNKNOWN";
 }
 
 
@@ -965,15 +1023,15 @@ function checkBreakoutSignal(stochastic, rsi){
 // Function to process market data
 const processMarketData = async () => {
   const now = DateTime.now().toSeconds(); // Current time in seconds
-  const thirtySixMinutesAgo = now - (45 * 60); // 45 minutes ago in seconds
+  const thirtySixMinutesAgo = now - (65 * 60); // 65 minutes ago in seconds
 
-  // Filter marketPrices to only include prices from the last 45 minutes
+  // Filter marketPrices to only include prices from the last 65 minutes
   const recentPrices = marketPrices.filter(price => price.timestamp >= thirtySixMinutesAgo);
 
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData10Sec = aggregateOHLC10Sec(recentPrices);
   const ohlcData60Sec = aggregateOHLC60Sec(recentPrices);
-  if (ohlcData10Sec.length < 246) return; // Ensure enough data for calculations
+  if (ohlcData10Sec.length < 366) return; // Ensure enough data for calculations
  
 
   // ✅ Fetch indicator values from the module
@@ -1290,7 +1348,7 @@ const connectWebSocket = (apiToken) => {
         case "tick":
             try {
                 const now = DateTime.now().toSeconds(); // Current time in seconds
-                const thirtySixMinutesAgo = now - (45 * 60); // 45 minutes ago in seconds
+                const thirtySixMinutesAgo = now - (65 * 60); // 65 minutes ago in seconds
                 // Extract the new tick data
                 const newTick = {
                   price: response.tick.quote,
