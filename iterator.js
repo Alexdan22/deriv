@@ -197,7 +197,7 @@ async function calculateIndicators(prices) {
       low: lowPrices,
       close: closePrices,
       period: 84,
-      signalPeriod: 126
+      signalPeriod: 84
   });
 
   // Bollinger Bands Calculation
@@ -221,149 +221,6 @@ async function calculateIndicators(prices) {
       ema14,
       ema21
   };
-}
-
-function calculateEmaBasedRSI(closes, period = 14) {
-  if (closes.length < period) {
-      throw new Error("Not enough data points to calculate RSI");
-  }
-
-  const tiRsi = ti.RSI.calculate({ values: closes, period });
-
-  let gains = 0, losses = 0;
-  let rsiValues = [];
-  let alpha = 2 / (period + 1); // ✅ Corrected smoothing factor
-
-  // Initial average gain/loss calculation
-  for (let i = 1; i <= period; i++) {
-      let change = closes[i] - closes[i - 1];
-      if (change > 0) gains += change;
-      else losses += Math.abs(change);
-  }
-
-  let avgGain = gains / period;
-  let avgLoss = losses / period;
-
-  // Compute first RSI value
-  let rs = avgLoss === 0 ? 99.99 : avgGain / avgLoss;
-  let firstRSI = 100 - (100 / (1 + rs));
-  rsiValues.push(firstRSI);
-
-  // Compute remaining RSI values using EMA smoothing
-  for (let i = period; i < closes.length; i++) {
-      let change = closes[i] - closes[i - 1];
-      let gain = change > 0 ? change : 0;
-      let loss = change < 0 ? Math.abs(change) : 0;
-
-      // EMA-based smoothing for gains and losses
-      avgGain = (gain * alpha) + (avgGain * (1 - alpha));
-      avgLoss = (loss * alpha) + (avgLoss * (1 - alpha));
-
-      rs = avgLoss === 0 ? 99.99 : avgGain / avgLoss;
-      let rsi = 100 - (100 / (1 + rs));
-
-      rsiValues.push(rsi);
-  }
-
-  return {rsiValues, tiRsi};
-}
-
-function tradingViewChatGPTRSI(closes, period = 14) {
-  if (closes.length < period) {
-      throw new Error("Not enough data points to calculate RSI");
-  }
-
-  let rsiValues = [];
-  let gains = 0, losses = 0;
-  let alpha = 1 / period; // Equivalent to ta.rma() (Wilder's Smoothing)
-
-  // Calculate first average gain & loss (Simple Moving Average)
-  for (let i = 1; i <= period; i++) {
-      let change = closes[i] - closes[i - 1];
-      if (change > 0) gains += change;
-      else losses += Math.abs(change);
-  }
-
-  let avgGain = gains / period;
-  let avgLoss = losses / period;
-
-  // First RSI value
-  let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-  let firstRSI = 100 - (100 / (1 + rs));
-  rsiValues.push(firstRSI);
-
-  // Compute RSI using Wilder's Smoothing
-  for (let i = period; i < closes.length; i++) {
-      let change = closes[i] - closes[i - 1];
-      let gain = change > 0 ? change : 0;
-      let loss = change < 0 ? Math.abs(change) : 0;
-
-      // Wilder's smoothing (ta.rma equivalent)
-      avgGain = (gain * alpha) + (avgGain * (1 - alpha));
-      avgLoss = (loss * alpha) + (avgLoss * (1 - alpha));
-
-      rs = avgLoss === 0 ? 99.99 : avgGain / avgLoss;
-      let rsi = 100 - (100 / (1 + rs));
-
-      rsiValues.push(rsi);
-  }
-
-  return rsiValues;
-}
-
-function tradingViewDeepSeekRSI(source, rsiLength = 14) {
-  if (source.length < rsiLength) {
-      throw new Error("Not enough data points to calculate RSI");
-  }
-
-  let change = Array(source.length).fill(0);
-  let up = Array(source.length).fill(0);
-  let down = Array(source.length).fill(0);
-  let rsi = Array(source.length).fill(NaN);
-
-  // Calculate changes (skip index 0 since it has no previous value)
-  for (let i = 1; i < source.length; i++) {
-      change[i] = source[i] - source[i - 1];
-  }
-
-  // Calculate up and down movements
-  let upMovements = change.map(val => Math.max(val, 0));
-  let downMovements = change.map(val => -Math.min(val, 0));
-
-  // Calculate RMA (Wilders Moving Average)
-  function calculateRMA(data, length) {
-      let rma = Array(data.length).fill(NaN);
-      let sum = 0;
-
-      // Initialize first RMA value as SMA
-      for (let i = 0; i < length; i++) {
-          sum += data[i];
-      }
-      rma[length - 1] = sum / length;
-
-      // Calculate subsequent RMA values
-      for (let i = length; i < data.length; i++) {
-          rma[i] = (data[i] + (length - 1) * rma[i - 1]) / length;
-      }
-
-      return rma;
-  }
-
-  up = calculateRMA(upMovements, rsiLength);
-  down = calculateRMA(downMovements, rsiLength);
-
-  // Calculate RSI (only after enough data points)
-  for (let i = rsiLength; i < source.length; i++) {
-      if (down[i] === 0) {
-          rsi[i] = 100;
-      } else if (up[i] === 0) {
-          rsi[i] = 0;
-      } else {
-          rsi[i] = 100 - (100 / (1 + up[i] / down[i]));
-      }
-  }
-
-  return rsi;
 }
 
 function calculateExactRSI(source, rsiLength = 14) {
@@ -593,11 +450,11 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       stochasticState.hasRisenAbove30 = false;
       stochasticState.hasCrossedBelow20 = false;
 
-      const isRSIBuy = lastRSI < 46 || lastSecondRSI < 46;
-      const isRSIBuyLimit = lastRSI < 31 || lastSecondRSI < 31;
+      const isRSIBuy = lastRSI < 45 || lastSecondRSI < 45;
+      const isRSIBuyLimit = lastRSI > 25 || lastSecondRSI > 25;
 
 
-      if (isRSIBuy && lastD < 80 && lastD > 20 && !isRSIBuyLimit && marketValue > 2 ) {
+      if (isRSIBuy && isRSIBuyLimit && lastD < 80 && lastD > 20 && marketValue > 2 ) {
           console.log("---------------------------");
           console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
           console.log("---------------------------\n");
@@ -607,8 +464,8 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       // Reasons why the BUY signal was not triggered
       let reasons = [];
 
-      if (!isRSIBuy) reasons.push("RSI value is more than 46");
-      if (isRSIBuyLimit) reasons.push("RSI value is less than 31");
+      if (!isRSIBuy) reasons.push("RSI value is more than 45");
+      if (!isRSIBuyLimit) reasons.push("RSI value is less than 25");
       if (lastD > 80) reasons.push("Stochastic %D value is more than 80");
       if (lastD < 20) reasons.push("Stochastic %D value is less than 20");
       if (marketValue < 2) reasons.push("Bollinger Band value is less than 2");
@@ -637,10 +494,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       stochasticState.hasRisenAbove30 = false;
       stochasticState.hasCrossedAbove80 = false;
 
-      const isRSISell = lastRSI > 54 || lastSecondRSI > 54;
-      const isRSISellLimit = lastRSI > 69 || lastSecondRSI > 69;
+      const isRSISell = lastRSI > 55 || lastSecondRSI > 55;
+      const isRSISellLimit = lastRSI < 75 || lastSecondRSI < 75;
 
-      if (isRSISell && !isRSISellLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
+      if (isRSISell && isRSISellLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
           console.log("---------------------------");
           console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
           console.log("---------------------------\n");
@@ -650,8 +507,8 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       // Reasons why the SELL signal was not triggered
       let reasons = [];
 
-      if (!isRSISell) reasons.push("RSI value is less than 54");
-      if (isRSISellLimit) reasons.push("RSI value is more than 69");
+      if (!isRSISell) reasons.push("RSI value is less than 55");
+      if (!isRSISellLimit) reasons.push("RSI value is more than 75");
       if (lastD > 80) reasons.push("Stochastic %D value is more than 80");
       if (lastD < 20) reasons.push("Stochastic %D value is less than 20");
       if (marketValue < 2) reasons.push("Bollinger Band value is less than 2");
@@ -685,7 +542,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = lastRSI > 55 || lastSecondRSI > 55;
-      const isRSIBuyLimit = lastRSI > 69 || lastSecondRSI > 69;
+      const isRSIBuyLimit = lastRSI < 70 || lastSecondRSI < 70;
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
@@ -702,7 +559,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       }
 
 
-      if (isRSIBuy && isEMAUptrend && !isRSIBuyLimit && marketValue > 1.5) {
+      if (isRSIBuy && isRSIBuyLimit && isEMAUptrend && lastD < 80 && lastD > 20 && marketValue > 1.5) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
         console.log("---------------------------\n");
@@ -713,8 +570,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       const reasons = [];
       
       if (!isRSIBuy) reasons.push("RSI value is less than 55");
-      if (isRSIBuyLimit) reasons.push("RSI value is more than 69");
+      if (!isRSIBuyLimit) reasons.push("RSI value is more than 70");
       if (!isEMAUptrend) reasons.push("EMAs are not in uptrend");
+      if (lastD > 80) reasons.push("Stochastic %D value is more than 80");
+      if (lastD < 20) reasons.push("Stochastic %D value is less than 20");
       if (marketValue < 1.5) reasons.push("Bollinger Band value is less than 1.5");
       
       if (reasons.length) {
@@ -738,7 +597,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = lastRSI < 45 || lastSecondRSI < 45;
-      const isRSISellLimit = lastRSI < 31 || lastSecondRSI < 31;
+      const isRSISellLimit = lastRSI > 30 || lastSecondRSI > 30;
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
@@ -759,7 +618,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       }
 
 
-      if (isRSISell && isEMADowntrend && !isRSISellLimit && marketValue > 1.5) {
+      if (isRSISell && isRSISellLimit && isEMADowntrend && lastD < 80 && lastD > 20 && marketValue > 1.5) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------\n");
@@ -770,8 +629,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       const reasons = [];
       
       if (!isRSISell) reasons.push("RSI value is more than 45");
-      if (isRSISellLimit) reasons.push("RSI value is less than 31");
+      if (!isRSISellLimit) reasons.push("RSI value is less than 30");
       if (!isEMADowntrend) reasons.push("EMAs are not in Downtrend");
+      if (lastD > 80) reasons.push("Stochastic %D value is more than 80");
+      if (lastD < 20) reasons.push("Stochastic %D value is less than 20");
       if (marketValue < 1.5) reasons.push("Bollinger Band value is less than 1.5");
       
       if (reasons.length) {
@@ -803,7 +664,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
 
       // ✅ Confirm RSI & EMA conditions for BUY
       const isRSIBuy = lastRSI > 53 || lastSecondRSI > 53;
-      const isRSIBuyLimit = lastRSI > 64 || lastSecondRSI > 64;
+      const isRSIBuyLimit = lastRSI < 66 || lastSecondRSI < 66;
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
@@ -820,7 +681,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       }
 
 
-      if (isRSIBuy && isEMAUptrend && !isRSIBuyLimit && marketValue > 1.5) {
+      if (isRSIBuy && isRSIBuyLimit && isEMAUptrend && lastD < 80 && lastD > 20 && marketValue > 1.5) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
         console.log("---------------------------\n");
@@ -831,8 +692,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       const reasons = [];
       
       if (!isRSIBuy) reasons.push("RSI value is less than 53");
-      if (isRSIBuyLimit) reasons.push("RSI value is more than 64");
+      if (!isRSIBuyLimit) reasons.push("RSI value is more than 66");
       if (!isEMAUptrend) reasons.push("EMAs are not in uptrend");
+      if (lastD > 80) reasons.push("Stochastic %D value is more than 80");
+      if (lastD < 20) reasons.push("Stochastic %D value is less than 20");
       if (marketValue < 1.5) reasons.push("Bollinger Band value is less than 1.5");
       
       if (reasons.length) {
@@ -856,7 +719,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       
       // ✅ Confirm RSI & EMA conditions for SELL
       const isRSISell = lastRSI < 47 || lastSecondRSI < 47;
-      const isRSISellLimit = lastRSI < 36 || lastSecondRSI < 36;
+      const isRSISellLimit = lastRSI > 34 || lastSecondRSI > 34;
       const isEMAUptrend = lastEMA9 > lastEMA14 && lastEMA14 > lastEMA21;
       const isEMADowntrend = lastEMA9 < lastEMA14 && lastEMA14 < lastEMA21;
 
@@ -877,7 +740,7 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       }
 
 
-      if (isRSISell && isEMADowntrend && !isRSISellLimit && marketValue > 1.5) {
+      if (isRSISell && isRSISellLimit && isEMADowntrend && lastD < 80 && lastD > 20 && marketValue > 1.5) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------\n");
@@ -888,8 +751,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       const reasons = [];
       
       if (!isRSISell) reasons.push("RSI value is more than 47");
-      if (isRSISellLimit) reasons.push("RSI value is less than 36");
+      if (!isRSISellLimit) reasons.push("RSI value is less than 34");
       if (!isEMADowntrend) reasons.push("EMAs are not in Downtrend");
+      if (lastD > 80) reasons.push("Stochastic %D value is more than 80");
+      if (lastD < 20) reasons.push("Stochastic %D value is less than 20");
       if (marketValue < 1.5) reasons.push("Bollinger Band value is less than 1.5");
       
       if (reasons.length) {
@@ -920,10 +785,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       stochasticState.hasCrossedBelow20 = false;
 
       // ✅ Confirm RSI & EMA conditions for BUY
-      const isRSIBuy = lastRSI < 48 || lastSecondRSI < 48;
-      const isRSIBuyLimit = lastRSI < 37 || lastSecondRSI < 37;
+      const isRSIBuy = lastRSI < 50 || lastSecondRSI < 50;
+      const isRSIBuyLimit = lastRSI > 37 || lastSecondRSI > 37;
 
-      if (isRSIBuy && !isRSIBuyLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
+      if (isRSIBuy && isRSIBuyLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
         console.log("---------------------------\n");
@@ -933,8 +798,8 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       // Reasons why the BUY signal was not triggered
       const reasons = [];
       
-      if (!isRSIBuy) reasons.push("RSI value is more than 48");
-      if (isRSIBuyLimit) reasons.push("RSI value is less than 37");
+      if (!isRSIBuy) reasons.push("RSI value is more than 50");
+      if (!isRSIBuyLimit) reasons.push("RSI value is less than 37");
       if (lastD > 80) reasons.push("Stochastic %D value is more than 80");
       if (lastD < 20) reasons.push("Stochastic %D value is less than 20");
       if (marketValue < 2) reasons.push("Bollinger Band value is less than 2");
@@ -963,10 +828,10 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
 
       // ✅ Confirm RSI & EMA conditions for SELL
 
-      const isRSISell = lastRSI > 52 || lastSecondRSI > 52;
-      const isRSISellLimit = lastRSI > 63 || lastSecondRSI > 63;
+      const isRSISell = lastRSI > 50 || lastSecondRSI > 50;
+      const isRSISellLimit = lastRSI < 63 || lastSecondRSI < 63;
 
-      if (isRSISell && !isRSISellLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
+      if (isRSISell && isRSISellLimit && lastD < 80 && lastD > 20 && marketValue > 2) {
         console.log("---------------------------");
         console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
         console.log("---------------------------\n");
@@ -976,8 +841,8 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
       // Reasons why the SELL signal was not triggered
       const reasons = [];
       
-      if (!isRSISell) reasons.push("RSI value is less than 52");
-      if (isRSISellLimit) reasons.push("RSI value is more than 63");
+      if (!isRSISell) reasons.push("RSI value is less than 50");
+      if (!isRSISellLimit) reasons.push("RSI value is more than 63");
       if (lastD > 80) reasons.push("Stochastic %D value is more than 80");
       if (lastD < 20) reasons.push("Stochastic %D value is less than 20");
       if (marketValue < 2) reasons.push("Bollinger Band value is less than 2");
@@ -1025,11 +890,11 @@ function checkBreakoutSignal(stochastic, rsi){
     breakoutSignal.holdforBuy = false;
     
 
-    const isRSIBuy = lastRSI < 55 || lastSecondRSI < 55;
-    const isRSIBuyLimit = lastRSI < 43 || lastSecondRSI < 43;
+    const isRSIBuy = lastRSI < 56 || lastSecondRSI < 56;
+    const isRSIBuyLimit = lastRSI > 40 || lastSecondRSI > 40;
 
 
-    if(lastD < 20  && marketValue > 1.5 && isRSIBuy && !isRSIBuyLimit){
+    if(lastD < 20  && marketValue > 1.5 && isRSIBuy && isRSIBuyLimit){
       console.log("---------------------------");
       console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
       console.log("---------------------------\n");
@@ -1039,8 +904,8 @@ function checkBreakoutSignal(stochastic, rsi){
     // Reasons why the BUY signal was not triggered
     let reasons = [];
 
-    if (!isRSIBuy) reasons.push("RSI value is less than 55");
-    if (isRSIBuyLimit) reasons.push("RSI value is more than 43");
+    if (!isRSIBuy) reasons.push("RSI value is less than 56");
+    if (!isRSIBuyLimit) reasons.push("RSI value is more than 40");
     if (lastD > 20) reasons.push("Stochastic %D value is more than 20");
     if (marketValue < 1.5) reasons.push("Bollinger Band value is less than 1.5");
 
@@ -1066,11 +931,11 @@ function checkBreakoutSignal(stochastic, rsi){
     breakoutSignal.holdforSell = false;
     
 
-    const isRSISell = lastRSI > 45 || lastSecondRSI > 45;
-    const isRSISellLimit = lastRSI > 57 || lastSecondRSI > 57;
+    const isRSISell = lastRSI > 44 || lastSecondRSI > 44;
+    const isRSISellLimit = lastRSI < 60 || lastSecondRSI < 60;
 
 
-    if(lastD > 80  && marketValue > 1.5 && isRSISell && !isRSISellLimit){
+    if(lastD > 80  && marketValue > 1.5 && isRSISell && isRSISellLimit){
       console.log("---------------------------");
       console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
       console.log("---------------------------\n");
@@ -1080,8 +945,8 @@ function checkBreakoutSignal(stochastic, rsi){
     // Reasons why the SELL signal was not triggered
     let reasons = [];
 
-    if (!isRSISell) reasons.push("RSI value is more than 55");
-    if (isRSISellLimit) reasons.push("RSI value is less than 40");
+    if (!isRSISell) reasons.push("RSI value is more than 44");
+    if (!isRSISellLimit) reasons.push("RSI value is less than 60");
     if (lastD < 80) reasons.push("Stochastic %D value is less than 80");
     if (marketValue < 1.5) reasons.push("Bollinger Band value is less than 1.5");
 
