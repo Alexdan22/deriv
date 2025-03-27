@@ -570,15 +570,15 @@ function checkBreakoutSignal(stochastic, rsi){
 // Function to process market data
 const processMarketData = async () => {
   const now = DateTime.now().toSeconds(); // Current time in seconds
-  const thirtySixMinutesAgo = now - (65 * 60); // 65 minutes ago in seconds
+  const thirtySixMinutesAgo = now - (20 * 60); // 20 minutes ago in seconds
 
-  // Filter marketPrices to only include prices from the last 65 minutes
+  // Filter marketPrices to only include prices from the last 20 minutes
   const recentPrices = marketPrices.filter(price => price.timestamp >= thirtySixMinutesAgo);
 
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData10Sec = aggregateOHLC10Sec(recentPrices);
   const ohlcData60Sec = aggregateOHLC60Sec(recentPrices);
-  if (ohlcData10Sec.length < 366) return; // Ensure enough data for calculations
+  if (ohlcData10Sec.length < 90) return; // Ensure enough data for calculations
  
 
   // ✅ Fetch indicator values from the module
@@ -904,7 +904,7 @@ const connectWebSocket = (apiToken) => {
         case "tick":
             try {
                 const now = DateTime.now().toSeconds(); // Current time in seconds
-                const thirtySixMinutesAgo = now - (65 * 60); // 65 minutes ago in seconds
+                const thirtySixMinutesAgo = now - (20 * 60); // 65 minutes ago in seconds
                 // Extract the new tick data
                 const newTick = {
                   price: response.tick.quote,
