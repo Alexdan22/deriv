@@ -429,13 +429,13 @@ function checkRSISignal(stochastic, rsi) {
     
       //Conditions for Sell trigger
     
-      if((lastRSI > 40 || lastSecondRSI > 40) &&  !rsiState.holdforBuy ){
+      if((lastRSI > 40 || lastSecondRSI > 40) &&  !rsiState.holdforSell ){
         rsiState.holdforSell = true;
-        console.log(`📉 📉 RSI value dropped below 35 at ${currentTime} 📉 📉`);
+        console.log(`📉 📉 RSI value rose above 40 at ${currentTime} 📉 📉`);
       }
     
       if((lastRSI < 30 || lastSecondRSI < 30) && rsiState.holdforSell){
-        console.log(`📈 📈 RSI value crossed below 50 at ${currentTime} 📈 📈`);
+        console.log(`📈 📈 RSI value crossed below 30 at ${currentTime} 📈 📈`);
         console.log("Stochastic:", lastStochastic);
         console.log("RSI:", lastRSI + "," + lastSecondRSI);
         
@@ -475,10 +475,6 @@ function checkBreakoutSignal(stochastic, rsi){
   const lastD = lastStochastic.d;
   const lastRSI = rsi[rsi.length - 1];
   const lastSecondRSI = rsi[rsi.length - 2];
-  const lastBollingerBand = latestBollingerBands[latestBollingerBands.length - 1];
-  const lastBollingerUpper = lastBollingerBand.upper;
-  const lastBollingerLower = lastBollingerBand.lower;
-  const marketValue = lastBollingerUpper - lastBollingerLower;
 
   //Conditions for Buy trigger
 
@@ -499,7 +495,7 @@ function checkBreakoutSignal(stochastic, rsi){
     const isRSIBuyLimit = lastRSI > 40 || lastSecondRSI > 40;
 
 
-    if(lastD < 20  && marketValue > 1.5 && isRSIBuy && isRSIBuyLimit){
+    if(lastD < 20 && isRSIBuy && isRSIBuyLimit){
       console.log("---------------------------");
       console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
       console.log("---------------------------\n");
@@ -512,7 +508,6 @@ function checkBreakoutSignal(stochastic, rsi){
     if (!isRSIBuy) reasons.push("RSI value is less than 56");
     if (!isRSIBuyLimit) reasons.push("RSI value is more than 40");
     if (lastD > 20) reasons.push("Stochastic %D value is more than 20");
-    if (marketValue < 1.5) reasons.push("Bollinger Band value is less than 1.5");
 
     if (reasons.length > 0) {
         reasons.forEach(reason => console.log(`🟢 ❌ ${reason}`));
@@ -540,7 +535,7 @@ function checkBreakoutSignal(stochastic, rsi){
     const isRSISellLimit = lastRSI < 60 || lastSecondRSI < 60;
 
 
-    if(lastD > 80  && marketValue > 1.5 && isRSISell && isRSISellLimit){
+    if(lastD > 80 && isRSISell && isRSISellLimit){
       console.log("---------------------------");
       console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
       console.log("---------------------------\n");
@@ -553,7 +548,6 @@ function checkBreakoutSignal(stochastic, rsi){
     if (!isRSISell) reasons.push("RSI value is more than 44");
     if (!isRSISellLimit) reasons.push("RSI value is less than 60");
     if (lastD < 80) reasons.push("Stochastic %D value is less than 80");
-    if (marketValue < 1.5) reasons.push("Bollinger Band value is less than 1.5");
 
     if (reasons.length > 0) {
         reasons.forEach(reason => console.log(`🛑 ❌ ${reason}`));
@@ -570,15 +564,15 @@ function checkBreakoutSignal(stochastic, rsi){
 // Function to process market data
 const processMarketData = async () => {
   const now = DateTime.now().toSeconds(); // Current time in seconds
-  const thirtySixMinutesAgo = now - (20 * 60); // 20 minutes ago in seconds
+  const thirtySixMinutesAgo = now - (30 * 60); // 30 minutes ago in seconds
 
-  // Filter marketPrices to only include prices from the last 20 minutes
+  // Filter marketPrices to only include prices from the last 30 minutes
   const recentPrices = marketPrices.filter(price => price.timestamp >= thirtySixMinutesAgo);
 
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData10Sec = aggregateOHLC10Sec(recentPrices);
   const ohlcData60Sec = aggregateOHLC60Sec(recentPrices);
-  if (ohlcData10Sec.length < 90) return; // Ensure enough data for calculations
+  if (ohlcData10Sec.length < 180) return; // Ensure enough data for calculations
  
 
   // ✅ Fetch indicator values from the module
@@ -904,7 +898,7 @@ const connectWebSocket = (apiToken) => {
         case "tick":
             try {
                 const now = DateTime.now().toSeconds(); // Current time in seconds
-                const thirtySixMinutesAgo = now - (20 * 60); // 65 minutes ago in seconds
+                const thirtySixMinutesAgo = now - (30 * 60); // 30 minutes ago in seconds
                 // Extract the new tick data
                 const newTick = {
                   price: response.tick.quote,
