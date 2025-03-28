@@ -589,6 +589,7 @@ const processMarketData = async () => {
 
   if (breakout !== "HOLD") {
     // Reset state variables after placing a trade
+    console.log(breakout);
     breakoutSignal.holdforBuy = false;
     breakoutSignal.holdforSell = false;
 
@@ -602,6 +603,7 @@ const processMarketData = async () => {
     });
   } else if (call !== "HOLD") {
     // Reset state variables after placing a trade
+    console.log(call);
     stochasticState.hasDroppedBelow65 = false;
     stochasticState.hasRisenAbove35 = false;
     stochasticState.hasCrossedAbove80 = false;
@@ -617,6 +619,7 @@ const processMarketData = async () => {
     });
   } else if (rsiCall !== "HOLD") {
     // Reset state variables after placing a trade
+    console.log(rsiCall);
     rsiState.holdforBuy = false;
     rsiState.holdforSell = false;
 
