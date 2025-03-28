@@ -487,7 +487,6 @@ function checkBreakoutSignal(stochastic, rsi){
     console.log(`📈 📈 BREAKOUT -- %K Stochastic value crossed above 50 at ${currentTime} 📈 📈`);
     console.log("Stochastic:", lastStochastic);
     console.log("RSI:", lastRSI + "," + lastSecondRSI);
-    console.log("Bollinger Band:", marketValue);
     breakoutSignal.holdforBuy = false;
     
 
@@ -527,7 +526,6 @@ function checkBreakoutSignal(stochastic, rsi){
     console.log(`📈 📈 BREAKOUT -- %K Stochastic value crossed below 50 at ${currentTime} 📈 📈`);
     console.log("Stochastic:", lastStochastic);
     console.log("RSI:", lastRSI + "," + lastSecondRSI);
-    console.log("Bollinger Band:", marketValue);
     breakoutSignal.holdforSell = false;
     
 
