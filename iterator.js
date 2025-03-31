@@ -1333,7 +1333,7 @@ const connectWebSocket = (apiToken) => {
             setProfit(ws, response);
           } catch (error) {
             console.error(`[${apiToken}] Authorization failed:`, error);
-            console.log("Authorization response:", response);
+            console.error("Authorization response:", response);
 
           }
           break;
