@@ -1340,6 +1340,11 @@ const connectWebSocket = (apiToken) => {
         
         case "tick":
             try {
+                if (!tick || !tick.quote) {
+                    console.error("Invalid tick data received:", tick);
+                    return;
+                }
+
                 const now = DateTime.now().toSeconds(); // Current time in seconds
                 const thirtySixMinutesAgo = now - (65 * 60); // 65 minutes ago in seconds
                 // Extract the new tick data
