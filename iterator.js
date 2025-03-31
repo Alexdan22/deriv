@@ -1340,8 +1340,8 @@ const connectWebSocket = (apiToken) => {
         
         case "tick":
             try {
-                if (!tick || !tick.quote) {
-                    console.error("Invalid tick data received:", tick);
+                if (!response.tick || !response.tick.quote) {
+                    console.error("Invalid tick data received:", response.tick);
                     return;
                 }
 
