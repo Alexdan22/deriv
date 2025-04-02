@@ -1334,6 +1334,17 @@ const connectWebSocket = (apiToken) => {
           } catch (error) {
             console.error(`[${apiToken}] Authorization failed:`, error);
             console.error("Authorization response:", response);
+            if(response.msg_type === 'authorize'){
+              setTimeout(() => {
+                const existingWs = wsMap.get(apiToken);
+          
+                // Only reconnect if the current WebSocket is actually closed
+                if (existingWs === ws && existingWs.readyState === WebSocket.CLOSED) {
+                  console.log(`[${apiToken}] Reconnecting WebSocket...`);
+                  wsMap.set(apiToken, connectWebSocket(apiToken));
+                }
+              }, 5000); // Reconnect after 5 seconds
+            }
 
           }
           break;
@@ -1428,18 +1439,6 @@ const connectWebSocket = (apiToken) => {
 
   ws.on('error', (error) => {
     console.error(`[${apiToken}] WebSocket error:`, error);
-
-    if(msg_type === 'authorize'){
-      setTimeout(() => {
-        const existingWs = wsMap.get(apiToken);
-  
-        // Only reconnect if the current WebSocket is actually closed
-        if (existingWs === ws && existingWs.readyState === WebSocket.CLOSED) {
-          console.log(`[${apiToken}] Reconnecting WebSocket...`);
-          wsMap.set(apiToken, connectWebSocket(apiToken));
-        }
-      }, 5000); // Reconnect after 5 seconds
-    }
   }); 
 
   return ws;
