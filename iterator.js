@@ -1330,22 +1330,27 @@ const connectWebSocket = (apiToken) => {
       switch (response.msg_type) {
         case "authorize":
           try {
+            if (!response || !response.authorize) {
+              if(response.msg_type === 'authorize'){
+                setTimeout(() => {
+                  const existingWs = wsMap.get(apiToken);
+            
+                  // Only reconnect if the current WebSocket is actually closed
+                  if (existingWs === ws && existingWs.readyState === WebSocket.CLOSED) {
+                    console.log(`[${apiToken}] Reconnecting WebSocket...`);
+                    wsMap.set(apiToken, connectWebSocket(apiToken));
+                  }
+                }, 5000); // Reconnect after 5 seconds
+              }
+              console.error(`[${apiToken}] Authorization failed. Response:`, response);
+              return;
+            }
             setProfit(ws, response);
+
           } catch (error) {
             console.error(`[${apiToken}] Authorization failed:`, error);
             console.error("Authorization response:", response);
-            if(response.msg_type === 'authorize'){
-              setTimeout(() => {
-                const existingWs = wsMap.get(apiToken);
-          
-                // Only reconnect if the current WebSocket is actually closed
-                if (existingWs === ws && existingWs.readyState === WebSocket.CLOSED) {
-                  console.log(`[${apiToken}] Reconnecting WebSocket...`);
-                  wsMap.set(apiToken, connectWebSocket(apiToken));
-                }
-              }, 5000); // Reconnect after 5 seconds
-            }
-
+            
           }
           break;
         
