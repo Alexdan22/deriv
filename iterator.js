@@ -1374,6 +1374,11 @@ const connectWebSocket = (apiToken) => {
         case "buy":
           if (!response.buy || !response.buy.contract_id) {
             console.warn(`[${apiToken}] Invalid buy response:`, response);
+
+            if (response.error.code === 'AuthorizationRequired') {
+              console.log(`[${accountId}] 🔄 Reauthorizing...`);
+              ws.send(JSON.stringify({ authorize: accountId }));
+            }
             return;
           }
           const customTradeId = response.passthrough?.custom_trade_id;
@@ -1418,10 +1423,24 @@ const connectWebSocket = (apiToken) => {
         console.log(`[${apiToken}] Reconnecting WebSocket...`);
         wsMap.set(apiToken, connectWebSocket(apiToken));
       }
-    }, 10000);
+    }, 5000); // Reconnect after 5 seconds
   });
 
-  ws.on('error', (error) => console.error(`[${apiToken}] WebSocket error:`, error));
+  ws.on('error', (error) => {
+    console.error(`[${apiToken}] WebSocket error:`, error);
+
+    if(msg_type === 'authorize'){
+      setTimeout(() => {
+        const existingWs = wsMap.get(apiToken);
+  
+        // Only reconnect if the current WebSocket is actually closed
+        if (existingWs === ws && existingWs.readyState === WebSocket.CLOSED) {
+          console.log(`[${apiToken}] Reconnecting WebSocket...`);
+          wsMap.set(apiToken, connectWebSocket(apiToken));
+        }
+      }, 5000); // Reconnect after 5 seconds
+    }
+  }); 
 
   return ws;
 };
