@@ -626,7 +626,7 @@ const processMarketData = async () => {
     API_TOKEN_GOLD.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, rsiCall });
+        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call: rsiCall });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
