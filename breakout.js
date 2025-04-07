@@ -739,7 +739,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   if (!trade) return;
   if (contract.profit < 0) {
     console.log(`[${accountId}] Trade lost, Updating stake`);
-    // 1, 2.7, 7.2, 19.2, 51.2, 136.50, 364
+    // 1, 2.7, 7.2, 19.2, || 51.2, 136.50, 364
     if(trade.stake == 1){
       user.pnl = user.pnl + (contract.profit || 0);
       user.stake = 2.7;
@@ -753,18 +753,6 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       user.stake = 19.2;
       user.save();
     }else if (trade.stake == 19.2){
-      user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 51.2;
-      user.save();
-    }else if (trade.stake == 51.2){
-      user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 136.5;
-      user.save();
-    }else if (trade.stake == 136.5){
-      user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 364;
-      user.save();
-    }else if (trade.stake == 364){
       console.log(`[${accountId}] All Trade lost, Resetting stake`);
       user.pnl = user.pnl + (contract.profit || 0);
       user.stake = 1;
