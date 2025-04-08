@@ -770,7 +770,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance found, Adding up to balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1;
+      user.stake = 1*2;
       user.balance = newBalance
       user.dynamicBalance = newBalance
       user.save();
@@ -778,7 +778,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance not found, deducting from balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1;
+      user.stake = 1*2;
       user.balance = newBalance
       user.save();
     }
