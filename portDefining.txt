@@ -1,0 +1,31 @@
+//Create and save this file at sudo nano /etc/nginx/sites-available/newdomain.com
+
+
+server {
+    listen 80;
+    server_name newdomain.com www.newdomain.com;
+
+    location / {
+        proxy_pass http://localhost:5050;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+//Enable the saved newdomain config 
+
+sudo ln -s /etc/nginx/sites-available/newdomain.com /etc/nginx/sites-enabled/
+sudo nginx -t
+
+//Reload if everything returns ok
+
+sudo systemctl reload nginx
+
+
+//Add ssl certificate using certbot
+
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d newdomain.com -d www.newdomain.com

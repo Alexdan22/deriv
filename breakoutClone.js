@@ -8,7 +8,7 @@ const { DateTime } = require('luxon');
 const ti = require('technicalindicators');
 require('dotenv').config();
 
-const API_TOKEN_GOLD = process.env.API_TOKEN_GOLD ? process.env.API_TOKEN_GOLD.split(',') : [];
+const API_TOKEN_GOLD_CLONE = process.env.API_TOKEN_GOLD_CLONE ? process.env.API_TOKEN_GOLD_CLONE.split(',') : [];
 
 const app = express();
 app.use(bodyParser.json());
@@ -63,10 +63,10 @@ async function getAllApiTokens() {
     
     const dbTokenArray = dbTokens.map((doc) => doc.apiToken); 
 
-    return [...API_TOKEN_GOLD, ...dbTokenArray]; // Merge .env tokens and DB tokens
+    return [...API_TOKEN_GOLD_CLONE, ...dbTokenArray]; // Merge .env tokens and DB tokens
   } catch (error) {
     console.error("Error fetching API tokens from DB:", error);
-    return API_TOKEN_GOLD;
+    return API_TOKEN_GOLD_CLONE;
   }
 }
 
@@ -326,11 +326,15 @@ function checkTradeSignal(stochastic, rsi) {
     // Reasons why the BUY signal was not triggered
     let reasons = [];
 
-    if (!isRSIBuy) reasons.push("RSI value is less than 65");
-
-    if (reasons.length > 0) {
-        reasons.forEach(reason => console.log(`🟢 ❌ ${reason}`));
-        console.log(`🟢 ❌ BUY Signal conditions not met at ${currentTime} ❌ 🟢\n`);
+    if (!isRSIBuy){
+        console.log("---------------------------");
+        console.log(`🟢 ❌ RSI value is less than 65`);
+        console.log("---------------------------");
+        console.log(`REVERSING TO SELL`);
+        console.log("---------------------------");
+        console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
+        console.log("---------------------------\n");
+        return "SELL";
     }
 
   }
@@ -365,11 +369,16 @@ function checkTradeSignal(stochastic, rsi) {
     // Reasons why the SELL signal was not triggered
     let reasons = [];
 
-    if (!isRSISell) reasons.push("RSI value is more than 35");
+    if (!isRSISell){
 
-    if (reasons.length > 0) {
-        reasons.forEach(reason => console.log(`🛑 ❌ ${reason}`));
-        console.log(`🛑 ❌ SELL Signal conditions not met at ${currentTime} ❌ 🛑\n`);
+        console.log("---------------------------");
+        console.log(`🔴 ❌ RSI value is more than 35`);
+        console.log("---------------------------");
+        console.log(`REVERSING TO BUY`);
+        console.log("---------------------------");
+        console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
+        console.log("---------------------------\n");
+        return "BUY";
     }
   }
 
@@ -593,7 +602,7 @@ const processMarketData = async () => {
     breakoutSignal.holdforBuy = false;
     breakoutSignal.holdforSell = false;
 
-    API_TOKEN_GOLD.forEach(accountId => {
+    API_TOKEN_GOLD_CLONE.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
         placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call: breakout });
@@ -609,7 +618,7 @@ const processMarketData = async () => {
     stochasticState.hasCrossedAbove80 = false;
     stochasticState.hasCrossedBelow20 = false;
 
-    API_TOKEN_GOLD.forEach(accountId => {
+    API_TOKEN_GOLD_CLONE.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
         placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
@@ -623,7 +632,7 @@ const processMarketData = async () => {
     rsiState.holdforBuy = false;
     rsiState.holdforSell = false;
 
-    API_TOKEN_GOLD.forEach(accountId => {
+    API_TOKEN_GOLD_CLONE.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
         placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call: rsiCall });
@@ -655,9 +664,8 @@ const placeTrade = async (ws, accountId, trade) => {
 
   if(user){
     //Process trade further
-    const stopLoss = user.stake * user.stopLoss;
+    const stopLoss = user.stopLoss;
     const dynamicStopLoss = user.dynamicBalance - stopLoss;
-    const stopLossCondition = user.dynamicBalance - dynamicStopLoss;
     console.log(`[${accountId}] Balance: ${user.balance}, Stop Loss Condition: ${dynamicStopLoss}`);
 
     if(user.profitThreshold > user.pnl){
@@ -739,28 +747,28 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   if (!trade) return;
   if (contract.profit < 0) {
     console.log(`[${accountId}] Trade lost, Updating stake`);
-    // 1, 2.7, 7.2, 19.2, || 51.2, 136.50, 364
-    if(trade.stake == 1*2){
+    // 1, 3, 9, 27, || 51.2, 136.50, 364
+    if(trade.stake == 1){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 2.7*2;
+      user.stake = 3;
       user.save();
-    }else if( trade.stake == 2.7*2){
+    }else if( trade.stake == 3){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 7.2*2;
+      user.stake = 9;
       user.save();
-    }else if (trade.stake == 7.2*2){
+    }else if (trade.stake == 9){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 19.2*2;
+      user.stake = 27;
       user.save();
-    }else if (trade.stake == 19.2*2){
+    }else if (trade.stake == 27){
       console.log(`[${accountId}] All Trade lost, Resetting stake`);
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1*2;
+      user.stake = 1;
       user.save();
     }else{
       console.log(`[${accountId}] All Trade lost, Resetting stake`);
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1*2;
+      user.stake = 1;
       user.save();
     }
   }else{
@@ -770,7 +778,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance found, Adding up to balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1*2;
+      user.stake = 1;
       user.balance = newBalance
       user.dynamicBalance = newBalance
       user.save();
@@ -778,7 +786,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance not found, deducting from balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1*2;
+      user.stake = 1;
       user.balance = newBalance
       user.save();
     }
@@ -825,8 +833,8 @@ const setProfit = async (ws, response) => {
       date: `${date}-${month}-${year}`,
       pnl: 0,
       tradePlan: stake,
-      profitThreshold: stake * 0.15, // 15% of Trade plan
-      stopLoss: 1000, // 10% of Trade plan
+      profitThreshold: 15, 
+      stopLoss: 39, 
       trades: [],
     });
   
@@ -992,8 +1000,8 @@ function startAtNextMinute() {
 
 
 
-app.listen(5000, () => {
-    console.log('Server running on port 5000');
+app.listen(5050, () => {
+    console.log('Server running on port 5050');
     startAtNextMinute();
   });
   
