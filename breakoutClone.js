@@ -427,11 +427,15 @@ function checkRSISignal(stochastic, rsi) {
         // Reasons why the BUY signal was not triggered
         let reasons = [];
     
-        if (lastD < 65) reasons.push("%D value is less than 65");
-    
-        if (reasons.length > 0) {
-            reasons.forEach(reason => console.log(`🟢 ❌ ${reason}`));
-            console.log(`🟢 ❌ BUY Signal conditions not met at ${currentTime} ❌ 🟢\n`);
+        if (lastD < 65){
+            console.log("---------------------------");
+            console.log(`🟢 ❌ %D value is less than 65`);
+            console.log("---------------------------");
+            console.log(`REVERSING TO SELL`);
+            console.log("---------------------------");
+            console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
+            console.log("---------------------------\n");
+            return "SELL"; 
         }
     
       }
@@ -461,11 +465,15 @@ function checkRSISignal(stochastic, rsi) {
         // Reasons why the SELL signal was not triggered
         let reasons = [];
     
-        if (lastD > 35) reasons.push("RSI value is more than 55");
-    
-        if (reasons.length > 0) {
-            reasons.forEach(reason => console.log(`🛑 ❌ ${reason}`));
-            console.log(`🛑 ❌ SELL Signal conditions not met at ${currentTime} ❌ 🛑\n`);
+        if (lastD > 35){
+            console.log("---------------------------");
+            console.log(`🛑 ❌ %D value is more than 35`);
+            console.log("---------------------------");
+            console.log(`REVERSING TO BUY`);
+            console.log("---------------------------");
+            console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
+            console.log("---------------------------\n");
+            return "BUY";
         }
       }
     
