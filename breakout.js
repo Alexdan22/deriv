@@ -326,11 +326,15 @@ function checkTradeSignal(stochastic, rsi) {
     // Reasons why the BUY signal was not triggered
     let reasons = [];
 
-    if (!isRSIBuy) reasons.push("RSI value is less than 65");
-
-    if (reasons.length > 0) {
-        reasons.forEach(reason => console.log(`🟢 ❌ ${reason}`));
-        console.log(`🟢 ❌ BUY Signal conditions not met at ${currentTime} ❌ 🟢\n`);
+    if (!isRSIBuy){
+        console.log("---------------------------");
+        console.log(`🟢 ❌ RSI value is less than 65`);
+        console.log("---------------------------");
+        console.log(`REVERSING TO SELL`);
+        console.log("---------------------------");
+        console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
+        console.log("---------------------------\n");
+        return "SELL";
     }
 
   }
@@ -365,103 +369,21 @@ function checkTradeSignal(stochastic, rsi) {
     // Reasons why the SELL signal was not triggered
     let reasons = [];
 
-    if (!isRSISell) reasons.push("RSI value is more than 35");
+    if (!isRSISell){
 
-    if (reasons.length > 0) {
-        reasons.forEach(reason => console.log(`🛑 ❌ ${reason}`));
-        console.log(`🛑 ❌ SELL Signal conditions not met at ${currentTime} ❌ 🛑\n`);
+        console.log("---------------------------");
+        console.log(`🔴 ❌ RSI value is more than 35`);
+        console.log("---------------------------");
+        console.log(`REVERSING TO BUY`);
+        console.log("---------------------------");
+        console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
+        console.log("---------------------------\n");
+        return "BUY";
     }
   }
 
   // Default to HOLD
   return "HOLD";
-}
-
-function checkRSISignal(stochastic, rsi) {
-    if (!stochastic?.length || !rsi?.length) {
-        console.log("Insufficient indicator values for calculation");
-        return "HOLD";
-      }
-    
-      const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
-      const lastStochastic = stochastic[stochastic.length - 1];
-      const lastK = lastStochastic.k;
-      const lastD = lastStochastic.d;
-      const lastRSI = rsi[rsi.length - 1];
-      const lastSecondRSI = rsi[rsi.length - 2];
-    
-      //Conditions for Buy trigger
-    
-      if((lastRSI < 60 || lastSecondRSI < 60) &&  !rsiState.holdforBuy){
-        rsiState.holdforBuy = true;
-        console.log(`📉 📉 RSI value dropped below 60 at ${currentTime} 📉 📉`);
-      }
-    
-      if((lastRSI > 70 || lastSecondRSI > 70) && rsiState.holdforBuy){
-        console.log(`📈 📈 RSI value crossed above 70 at ${currentTime} 📈 📈`);
-        console.log("Stochastic:", lastStochastic);
-        console.log("RSI:", lastRSI + "," + lastSecondRSI);
-        
-        rsiState.holdforBuy = false;
-        rsiState.holdforSell = false;
-        
-    
-    
-    
-        if(lastD > 65){
-          console.log("---------------------------");
-          console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
-          console.log("---------------------------\n");
-          return "BUY";
-        }
-    
-        // Reasons why the BUY signal was not triggered
-        let reasons = [];
-    
-        if (lastD < 65) reasons.push("%D value is less than 65");
-    
-        if (reasons.length > 0) {
-            reasons.forEach(reason => console.log(`🟢 ❌ ${reason}`));
-            console.log(`🟢 ❌ BUY Signal conditions not met at ${currentTime} ❌ 🟢\n`);
-        }
-    
-      }
-    
-      //Conditions for Sell trigger
-    
-      if((lastRSI > 40 || lastSecondRSI > 40) &&  !rsiState.holdforSell ){
-        rsiState.holdforSell = true;
-        console.log(`📉 📉 RSI value rose above 40 at ${currentTime} 📉 📉`);
-      }
-    
-      if((lastRSI < 30 || lastSecondRSI < 30) && rsiState.holdforSell){
-        console.log(`📈 📈 RSI value crossed below 30 at ${currentTime} 📈 📈`);
-        console.log("Stochastic:", lastStochastic);
-        console.log("RSI:", lastRSI + "," + lastSecondRSI);
-        
-        rsiState.holdforBuy = false;
-        rsiState.holdforSell = false;
-    
-        if(lastD < 35){
-          console.log("---------------------------");
-          console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
-          console.log("---------------------------\n");
-          return "SELL";
-        }
-    
-        // Reasons why the SELL signal was not triggered
-        let reasons = [];
-    
-        if (lastD > 35) reasons.push("RSI value is more than 55");
-    
-        if (reasons.length > 0) {
-            reasons.forEach(reason => console.log(`🛑 ❌ ${reason}`));
-            console.log(`🛑 ❌ SELL Signal conditions not met at ${currentTime} ❌ 🛑\n`);
-        }
-      }
-    
-      // Default to HOLD
-      return "HOLD";
 }
 
 function checkBreakoutSignal(stochastic, rsi){
@@ -613,20 +535,6 @@ const processMarketData = async () => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
         placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
-      } else {
-        console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
-      }
-    });
-  } else if (rsiCall !== "HOLD") {
-    // Reset state variables after placing a trade
-    console.log(rsiCall);
-    rsiState.holdforBuy = false;
-    rsiState.holdforSell = false;
-
-    API_TOKEN_GOLD.forEach(accountId => {
-      const ws = wsMap.get(accountId);
-      if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call: rsiCall });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
