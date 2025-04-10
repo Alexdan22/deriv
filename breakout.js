@@ -326,15 +326,11 @@ function checkTradeSignal(stochastic, rsi) {
     // Reasons why the BUY signal was not triggered
     let reasons = [];
 
-    if (!isRSIBuy){
-        console.log("---------------------------");
-        console.log(`🟢 ❌ RSI value is less than 65`);
-        console.log("---------------------------");
-        console.log(`REVERSING TO SELL`);
-        console.log("---------------------------");
-        console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
-        console.log("---------------------------\n");
-        return "SELL";
+    if (!isRSIBuy) reasons.push("RSI value is less than 65");
+
+    if (reasons.length > 0) {
+        reasons.forEach(reason => console.log(`🟢 ❌ ${reason}`));
+        console.log(`🟢 ❌ BUY Signal conditions not met at ${currentTime} ❌ 🟢\n`);
     }
 
   }
@@ -369,17 +365,13 @@ function checkTradeSignal(stochastic, rsi) {
     // Reasons why the SELL signal was not triggered
     let reasons = [];
 
-    if (!isRSISell){
+    if (!isRSISell) reasons.push("RSI value is more than 55");
 
-        console.log("---------------------------");
-        console.log(`🔴 ❌ RSI value is more than 35`);
-        console.log("---------------------------");
-        console.log(`REVERSING TO BUY`);
-        console.log("---------------------------");
-        console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
-        console.log("---------------------------\n");
-        return "BUY";
+    if (reasons.length > 0) {
+        reasons.forEach(reason => console.log(`🛑 ❌ ${reason}`));
+        console.log(`🛑 ❌ SELL Signal conditions not met at ${currentTime} ❌ 🛑\n`);
     }
+
   }
 
   // Default to HOLD
@@ -643,31 +635,32 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   if (!tradesForAccount) return;
 
   const trade = tradesForAccount.get(tradeId);
+  const multiplier = 1;
   if (!trade) return;
   if (contract.profit < 0) {
     console.log(`[${accountId}] Trade lost, Updating stake`);
     // 1, 2.7, 7.2, 19.2, || 51.2, 136.50, 364
-    if(trade.stake == 1*2){
+    if(trade.stake == 1*multiplier){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 2.7*2;
+      user.stake = 2.7*multiplier;
       user.save();
-    }else if( trade.stake == 2.7*2){
+    }else if( trade.stake == 2.7*multiplier){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 7.2*2;
+      user.stake = 7.2*multiplier;
       user.save();
-    }else if (trade.stake == 7.2*2){
+    }else if (trade.stake == 7.2*multiplier){
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 19.2*2;
+      user.stake = 19.2*multiplier;
       user.save();
-    }else if (trade.stake == 19.2*2){
+    }else if (trade.stake == 19.2*multiplier){
       console.log(`[${accountId}] All Trade lost, Resetting stake`);
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1*2;
+      user.stake = 1*multiplier;
       user.save();
     }else{
       console.log(`[${accountId}] All Trade lost, Resetting stake`);
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1*2;
+      user.stake = 1*multiplier;
       user.save();
     }
   }else{
@@ -677,7 +670,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance found, Adding up to balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1*2;
+      user.stake = 1*multiplier;
       user.balance = newBalance
       user.dynamicBalance = newBalance
       user.save();
@@ -685,7 +678,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance not found, deducting from balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1*2;
+      user.stake = 1*multiplier;
       user.balance = newBalance
       user.save();
     }
