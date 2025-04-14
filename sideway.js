@@ -8,7 +8,7 @@ const { DateTime } = require('luxon');
 const ti = require('technicalindicators');
 const { Api } = require('./models/Api.js');
 const { checkBreakoutSignal, checkTradeSignal } = require('./models/split_strategy.js');
-const { calculateIndicators, calculateExactRSI } = require('./models/indicators.js');
+// const { calculateIndicators, calculateExactRSI } = require('./models/indicators.js');
 require('dotenv').config();
 
 
