@@ -546,7 +546,6 @@ const processMarketData = async () => {
 
   // ✅ Check trade signal using the calculated values
   const call = checkTradeSignal(stochastic, rsi);
-  const breakout = checkBreakoutSignal(stochastic, rsi);
 
   if (call !== "HOLD") {
     // Reset state variables after placing a trade
