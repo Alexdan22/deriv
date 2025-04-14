@@ -1,3 +1,6 @@
+const { DateTime } = require('luxon');
+const ti = require('technicalindicators');
+
 // Function to check trade signals based on indicators
 function checkTradeSignal(stochastic, rsi) {
   if (!stochastic?.length || !rsi?.length) {

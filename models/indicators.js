@@ -1,3 +1,6 @@
+const { DateTime } = require('luxon');
+const ti = require('technicalindicators');
+
 // Function to calculate Indicator values
 async function calculateIndicators(prices) {
 

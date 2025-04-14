@@ -1,3 +1,6 @@
+const { DateTime } = require('luxon');
+const ti = require('technicalindicators');
+
 function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
   if (!stochastic?.length|| !ema9?.length || !ema14?.length || !ema21?.length || !rsi?.length) {
     console.log("Insufficient indicator values for calculation");
