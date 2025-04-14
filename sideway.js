@@ -87,6 +87,7 @@ const breakoutSignal = {
 let wsMap = new Map(); // Store WebSocket connections
 let tradeInProgress = false; // Flag to prevent multiple trades
 let api_tokens = [];
+let trend = null; // Variable to store the current market trend
 
 async function getAllApiTokens() {
   try {
@@ -280,6 +281,191 @@ function calculateExactRSI(source, rsiLength = 14) {
 
   // Pad beginning with NaN (like TradingView)
   return Array(rsiLength).fill(NaN).concat(rsi.slice(rsiLength));
+}
+
+
+
+// Function to detect market type
+function detectMarketType(prices, bbwThreshold = 3.5) {
+  
+  const now = DateTime.now(); // Current time in seconds
+  const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
+  if (prices.length < 30) return "UNKNOWN";
+
+
+  function detectTrend(prices, period, percentageThreshold) {
+    // Bollinger Bands Calculation
+    const bbValues = ti.BollingerBands.calculate({
+      values: prices.map(c => c.close ?? c),
+      period: period,
+      stdDev: 2
+    });
+
+    // Extract only the latest 'period' candles & their respective BB middle values
+    const recentPrices = prices.slice(-period);
+    const recentBBMiddles = bbValues.slice(-period).map(b => b.middle); 
+
+    // Extract close prices for the last 'period' candles
+    const closePrices = recentPrices.map(c => c.close ?? c);  
+
+    // Compare each candle's close price to its own Bollinger Band middle value
+    let candlesAbove = closePrices.filter((p, i) => p > recentBBMiddles[i]).length;
+    let candlesBelow = closePrices.filter((p, i) => p < recentBBMiddles[i]).length;
+
+    // Calculate percentages  -- 78% needed for trending market
+    let abovePercentage = (candlesAbove / period) * 100;
+    let belowPercentage = (candlesBelow / period) * 100;
+
+    if(abovePercentage > percentageThreshold) return "UPTRENDING";
+    if(belowPercentage > percentageThreshold) return "DOWNTRENDING";
+    
+
+    //Default fallback
+    return "SIDEWAYS";
+
+  }
+
+ 
+
+  const bb9 = detectTrend(prices, 9, 78); // 78% needed for trending market
+  const bb20 = detectTrend(prices, 20, 75); // 75% needed for trending market
+  const bb28 = detectTrend(prices, 28, 75); // 75% needed for trending market
+
+  function classifyMarket(bb9, bb20, bb28) {
+      const trendCombo = `${bb9}-${bb20}-${bb28}`;
+
+      const trendingCombinations = new Set([
+          "UPTRENDING-UPTRENDING-UPTRENDING",
+          "UPTRENDING-UPTRENDING-SIDEWAYS",
+          "SIDEWAYS-UPTRENDING-UPTRENDING",
+          "SIDEWAYS-UPTRENDING-SIDEWAYS",
+          "SIDEWAYS-DOWNTRENDING-DOWNTRENDING",
+          "SIDEWAYS-DOWNTRENDING-SIDEWAYS",
+          "DOWNTRENDING-DOWNTRENDING-DOWNTRENDING",
+          "DOWNTRENDING-DOWNTRENDING-SIDEWAYS"
+      ]);
+
+      const sidewaysCombinations = new Set([
+          "SIDEWAYS-SIDEWAYS-UPTRENDING",
+          "UPTRENDING-SIDEWAYS-UPTRENDING",
+          "SIDEWAYS-SIDEWAYS-DOWNTRENDING",
+          "SIDEWAYS-SIDEWAYS-SIDEWAYS",
+          "DOWNTRENDING-SIDEWAYS-DOWNTRENDING",
+          "DOWNTRENDING-SIDEWAYS-SIDEWAYS"
+      ]);
+
+      if (trendingCombinations.has(trendCombo)) {
+          return "TRENDING";
+      } else if (sidewaysCombinations.has(trendCombo)) {
+          return "SIDEWAYS";
+      } else {
+          return "UNKNOWN"; // Fallback in case of unexpected inputs
+      }
+  }
+
+  const marketType = classifyMarket(bb9, bb20, bb28);
+
+// Calculate BBW
+    const bbValues = ti.BollingerBands.calculate({
+        values: prices.map(c => c.close ?? c),
+        period: 20,
+        stdDev: 2
+    });
+
+    if (!bbValues.length) return "UNKNOWN"; // Prevents undefined errors
+
+  // Calculate BBW based on the latest Bollinger Band width
+  const bbw = bbValues[bbValues.length - 1].upper - bbValues[bbValues.length - 1].lower;
+
+
+  if (marketType === "TRENDING") {
+    if(bbw > 5){
+      if(trend !== "TRENDING" || trend === null){
+          trend = "TRENDING";
+          stochasticState.hasCrossedAbove80 = false;
+          stochasticState.hasDroppedBelow70 = false;
+          stochasticState.hasCrossedBelow20 = false;
+          stochasticState.hasRisenAbove30 = false;
+          console.log('');
+          console.log('');
+          console.log("-----------------------------------------------------------------");
+          console.log('');
+          console.log('');
+          console.log(` 🔥 🔥 Trending Market Strategy detected at ${currentTime} 🔥 🔥`);
+          console.log('');
+          console.log('');
+          console.log("-----------------------------------------------------------------");
+          console.log('');
+          console.log('');
+      }
+      return;  // Strong trend when BBW is large
+    }else{
+      if(trend !== "SLOW_TREND" || trend === null){
+        trend = "SLOW_TREND";
+        stochasticState.hasCrossedAbove80 = false;
+        stochasticState.hasDroppedBelow70 = false;
+        stochasticState.hasCrossedBelow20 = false;
+        stochasticState.hasRisenAbove30 = false;
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+        console.log(` 🔥 Slow Trend Market Strategy detected at ${currentTime}  🔥`);
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+      }
+      return;  // Price consistently on one side but with low volatility
+    }
+  }else if(marketType === "SIDEWAYS"){
+    if(bbw > 5){
+      // ** SIDEWAY MARKET STRATEGY**
+      if(trend !== "HIGHLY_VOLATILE" || trend === null){
+        trend = "HIGHLY_VOLATILE";
+        stochasticState.hasCrossedAbove80 = false;
+        stochasticState.hasDroppedBelow70 = false;
+        stochasticState.hasCrossedBelow20 = false;
+        stochasticState.hasRisenAbove30 = false;
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+        console.log(`⚡ ⚡Highly Volatile Sideways Market Strategy detected at ${currentTime}⚡ ⚡`);
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+      }
+      return;
+    }else{
+      if(trend !== "SIDEWAYS" || trend === null){
+        trend = "SIDEWAYS";
+        stochasticState.hasCrossedAbove80 = false;
+        stochasticState.hasDroppedBelow70 = false;
+        stochasticState.hasCrossedBelow20 = false;
+        stochasticState.hasRisenAbove30 = false;
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+        console.log(`🚧 🚧 Sideways Market Strategy detected at ${currentTime} 🚧 🚧`);
+        console.log('');
+        console.log('');
+        console.log("-----------------------------------------------------------------");
+        console.log('');
+        console.log('');
+      }
+      return;  // Default fallback
+    }
+  }
+  /// If no conditions are met, return "UNKNOWN"
+  return "UNKNOWN";
 }
 
 function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
@@ -542,6 +728,7 @@ const processMarketData = async () => {
   const closePrices = ohlcData10Sec.map(c => c.close);
   const closePrices60Sec = ohlcData60Sec.map(c => c.close);
   const rsi = calculateExactRSI(closePrices60Sec);
+  detectMarketType(ohlcData60Sec);
 
 
   // ✅ Check trade signal using the calculated values
