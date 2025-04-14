@@ -524,15 +524,15 @@ function checkTradeSignal(stochastic, ema9, ema14, ema21, rsi) {
 // Function to process market data
 const processMarketData = async () => {
   const now = DateTime.now().toSeconds(); // Current time in seconds
-  const thirtySixMinutesAgo = now - (30 * 60); // 30 minutes ago in seconds
+  const thirtySixMinutesAgo = now - (65 * 60); // 65 minutes ago in seconds
 
-  // Filter marketPrices to only include prices from the last 30 minutes
+  // Filter marketPrices to only include prices from the last 65 minutes
   const recentPrices = marketPrices.filter(price => price.timestamp >= thirtySixMinutesAgo);
 
   // Aggregate tick data into 1-minute OHLC candles
   const ohlcData10Sec = aggregateOHLC10Sec(recentPrices);
   const ohlcData60Sec = aggregateOHLC60Sec(recentPrices);
-  if (ohlcData10Sec.length < 180) return; // Ensure enough data for calculations
+  if (ohlcData10Sec.length < 366) return; // Ensure enough data for calculations
  
 
   // ✅ Fetch indicator values from the module
@@ -845,7 +845,7 @@ const connectWebSocket = (apiToken) => {
             try {
                   
                   const now = DateTime.now().toSeconds(); // Current time in seconds
-                  const thirtySixMinutesAgo = now - (30 * 60); // 30 minutes ago in seconds
+                  const thirtySixMinutesAgo = now - (65 * 60); // 30 minutes ago in seconds
 
                   if (response.tick && response.tick.quote !== undefined) {
                     // Extract the new tick data
