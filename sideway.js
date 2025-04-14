@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const { DateTime } = require('luxon');
 const ti = require('technicalindicators');
 const { Api } = require('./models/Api.js');
-const { checkBreakoutSignal, checkTradeSignal } = require('./models/strategy.js');
+const { checkBreakoutSignal, checkTradeSignal } = require('./models/split_strategy.js');
 const { calculateIndicators, calculateExactRSI } = require('./models/indicators.js');
 require('dotenv').config();
 
@@ -212,22 +212,7 @@ const processMarketData = async () => {
   const call = checkTradeSignal(stochastic, rsi);
   const breakout = checkBreakoutSignal(stochastic, rsi);
 
-  if (breakout !== "HOLD") {
-    // Reset state variables after placing a trade
-    console.log(breakout);
-    breakoutSignal.holdforBuy = false;
-    breakoutSignal.holdforSell = false;
-
-    const allTokens = await getAllApiTokens();
-    allTokens.forEach(accountId => {
-      const ws = wsMap.get(accountId);
-      if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call: breakout });
-      } else {
-        console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
-      }
-    });
-  } else if (call !== "HOLD") {
+  if (call !== "HOLD") {
     // Reset state variables after placing a trade
     console.log(call);
     stochasticState.hasDroppedBelow65 = false;
