@@ -842,6 +842,8 @@ const placeTrade = async (ws, accountId, trade) => {
 
 // Function to handle trade result
 const handleTradeResult = async (contract, accountId, tradeId) => {
+    const timeZone = 'Asia/Kolkata';
+    const currentTimeInTimeZone = DateTime.now().setZone(timeZone);
   let year = currentTimeInTimeZone.year;
   let month = currentTimeInTimeZone.month;
   let date = currentTimeInTimeZone.day;
