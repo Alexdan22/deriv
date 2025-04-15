@@ -1173,10 +1173,16 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
   
   const tradesForAccount = accountTrades.get(accountId);
-  if (!tradesForAccount) return;
+  if (!tradesForAccount){
+    console.log(`[${accountId}] No trades found for this account`);
+    return;
+  } 
 
   const trade = tradesForAccount.get(tradeId);
-  if (!trade) return;
+  if (!trade){
+    console.log(`[${accountId}] No trades found with this ID`);
+    return;
+  }
   if (contract.profit < 0) {
     console.log(`[${accountId}] Trade lost, Updating stake`);
     // 1, 2.7, 7.2, 19.2, 51.2, 136.50, 364
