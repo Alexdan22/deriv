@@ -297,17 +297,17 @@ function checkTradeSignal(stochastic, rsi) {
 
   //Conditions for Buy trigger
 
-  if(lastD < 70 &&  !stochasticState.hasDroppedBelow70){
-    stochasticState.hasDroppedBelow70 = true;
-    console.log(`📉 📉 %D Stochastic value dropped below 70 at ${currentTime} 📉 📉`);
+  if(lastD < 65 &&  !stochasticState.hasDroppedBelow65){
+    stochasticState.hasDroppedBelow65 = true;
+    console.log(`📉 📉 %D Stochastic value dropped below 65 at ${currentTime} 📉 📉`);
   }
 
-  if(lastD > 80 && stochasticState.hasDroppedBelow70){
+  if(lastD > 80 && stochasticState.hasDroppedBelow65){
     console.log(`📈 📈 %D Stochastic value crossed above 80 at ${currentTime} 📈 📈`);
     console.log("Stochastic:", lastStochastic);
     console.log("RSI:", lastRSI + "," + lastSecondRSI);
     
-    stochasticState.hasDroppedBelow70 = false,
+    stochasticState.hasDroppedBelow65 = false,
     stochasticState.hasCrossedAbove80 = false,
     stochasticState.hasCrossedBelow20 = false,
     stochasticState.hasRisenAbove35 = false
@@ -341,12 +341,12 @@ function checkTradeSignal(stochastic, rsi) {
 
   //Conditions for Sell trigger
 
-  if(lastD > 30 && !stochasticState.hasRisenAbove30 ){
-    stochasticState.hasRisenAbove30 = true;
-    console.log(`📉 📉 %D Stochastic value rose 30 at ${currentTime} 📉 📉`);
+  if(lastD > 35 && !stochasticState.hasRisenAbove35 ){
+    stochasticState.hasRisenAbove35 = true;
+    console.log(`📉 📉 %D Stochastic value rose 35 at ${currentTime} 📉 📉`);
   }
 
-  if(lastD < 20 && stochasticState.hasRisenAbove30){
+  if(lastD < 20 && stochasticState.hasRisenAbove35){
     console.log(`📉 📉 %D Stochastic value dropped below 20 at ${currentTime} 📉 📉`);
     console.log("Stochastic:", lastStochastic);
     console.log("RSI:", lastRSI + "," + lastSecondRSI);
@@ -401,9 +401,9 @@ function checkRSISignal(stochastic, rsi) {
     
       //Conditions for Buy trigger
     
-      if((lastRSI < 55 || lastSecondRSI < 55) &&  !rsiState.holdforBuy){
+      if((lastRSI < 60 || lastSecondRSI < 60) &&  !rsiState.holdforBuy){
         rsiState.holdforBuy = true;
-        console.log(`📉 📉 RSI value dropped below 55 at ${currentTime} 📉 📉`);
+        console.log(`📉 📉 RSI value dropped below 60 at ${currentTime} 📉 📉`);
       }
     
       if((lastRSI > 70 || lastSecondRSI > 70) && rsiState.holdforBuy){
@@ -417,7 +417,7 @@ function checkRSISignal(stochastic, rsi) {
     
     
     
-        if(lastD > 50){
+        if(lastD > 65){
           console.log("---------------------------");
           console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
           console.log("---------------------------\n");
@@ -427,9 +427,9 @@ function checkRSISignal(stochastic, rsi) {
         // Reasons why the BUY signal was not triggered
         let reasons = [];
     
-        if (lastD < 50){
+        if (lastD < 65){
             console.log("---------------------------");
-            console.log(`🟢 ❌ %D value is less than 50`);
+            console.log(`🟢 ❌ %D value is less than 65`);
             console.log("---------------------------");
             console.log(`REVERSING TO SELL`);
             console.log("---------------------------");
@@ -442,9 +442,9 @@ function checkRSISignal(stochastic, rsi) {
     
       //Conditions for Sell trigger
     
-      if((lastRSI > 45 || lastSecondRSI > 45) &&  !rsiState.holdforSell ){
+      if((lastRSI > 40 || lastSecondRSI > 40) &&  !rsiState.holdforSell ){
         rsiState.holdforSell = true;
-        console.log(`📉 📉 RSI value rose above 45 at ${currentTime} 📉 📉`);
+        console.log(`📉 📉 RSI value rose above 40 at ${currentTime} 📉 📉`);
       }
     
       if((lastRSI < 30 || lastSecondRSI < 30) && rsiState.holdforSell){
@@ -455,7 +455,7 @@ function checkRSISignal(stochastic, rsi) {
         rsiState.holdforBuy = false;
         rsiState.holdforSell = false;
     
-        if(lastD < 50){
+        if(lastD < 35){
           console.log("---------------------------");
           console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
           console.log("---------------------------\n");
@@ -465,9 +465,9 @@ function checkRSISignal(stochastic, rsi) {
         // Reasons why the SELL signal was not triggered
         let reasons = [];
     
-        if (lastD > 50){
+        if (lastD > 35){
             console.log("---------------------------");
-            console.log(`🛑 ❌ %D value is more than 50`);
+            console.log(`🛑 ❌ %D value is more than 35`);
             console.log("---------------------------");
             console.log(`REVERSING TO BUY`);
             console.log("---------------------------");
@@ -613,7 +613,7 @@ const processMarketData = async () => {
     API_TOKEN_GOLD_CLONE.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call: breakout });
+        placeTrade(ws, accountId, { symbol: `frxEURUSD`, call: breakout });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
@@ -629,7 +629,7 @@ const processMarketData = async () => {
     API_TOKEN_GOLD_CLONE.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call });
+        placeTrade(ws, accountId, { symbol: `frxEURUSD`, call });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
@@ -643,7 +643,7 @@ const processMarketData = async () => {
     API_TOKEN_GOLD_CLONE.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxXAUUSD`, call: rsiCall });
+        placeTrade(ws, accountId, { symbol: `frxEURUSD`, call: rsiCall });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
@@ -875,7 +875,7 @@ const connectWebSocket = (apiToken) => {
 
   ws.on('open', () => {
     sendToWebSocket(ws, { authorize: apiToken });
-    sendToWebSocket(ws, { ticks: "frxXAUUSD" });
+    sendToWebSocket(ws, { ticks: "frxEURUSD" });
 
     if (pingInterval) clearInterval(pingInterval);
     pingInterval = setInterval(() => {
@@ -1008,8 +1008,8 @@ function startAtNextMinute() {
 
 
 
-app.listen(5050, () => {
-    console.log('Server running on port 5050');
+app.listen(5000, () => {
+    console.log('Server running on port 5000');
     startAtNextMinute();
   });
   
