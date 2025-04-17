@@ -297,23 +297,23 @@ function checkTradeSignal(stochastic, rsi) {
 
   //Conditions for Buy trigger
 
-  if(lastD < 70 &&  !stochasticState.hasDroppedBelow70){
-    stochasticState.hasDroppedBelow70 = true;
-    console.log(`📉 📉 %D Stochastic value dropped below 70 at ${currentTime} 📉 📉`);
+  if(lastD < 65 &&  !stochasticState.hasDroppedBelow65){
+    stochasticState.hasDroppedBelow65 = true;
+    console.log(`📉 📉 %D Stochastic value dropped below 65 at ${currentTime} 📉 📉`);
   }
 
-  if(lastD > 80 && stochasticState.hasDroppedBelow70){
+  if(lastD > 80 && stochasticState.hasDroppedBelow65){
     console.log(`📈 📈 %D Stochastic value crossed above 80 at ${currentTime} 📈 📈`);
     console.log("Stochastic:", lastStochastic);
     console.log("RSI:", lastRSI + "," + lastSecondRSI);
     
-    stochasticState.hasDroppedBelow70 = false,
+    stochasticState.hasDroppedBelow65 = false,
     stochasticState.hasCrossedAbove80 = false,
     stochasticState.hasCrossedBelow20 = false,
     stochasticState.hasRisenAbove35 = false
     
 
-    const isRSIBuy = lastRSI > 50 || lastSecondRSI > 50;
+    const isRSIBuy = lastRSI > 65 || lastSecondRSI > 65;
 
 
     if(isRSIBuy){
@@ -328,7 +328,7 @@ function checkTradeSignal(stochastic, rsi) {
 
     if (!isRSIBuy){
         console.log("---------------------------");
-        console.log(`🟢 ❌ RSI value is less than 50`);
+        console.log(`🟢 ❌ RSI value is less than 65`);
         console.log("---------------------------");
         console.log(`REVERSING TO SELL`);
         console.log("---------------------------");
@@ -341,12 +341,12 @@ function checkTradeSignal(stochastic, rsi) {
 
   //Conditions for Sell trigger
 
-  if(lastD > 30 && !stochasticState.hasRisenAbove30 ){
-    stochasticState.hasRisenAbove30 = true;
-    console.log(`📉 📉 %D Stochastic value rose 30 at ${currentTime} 📉 📉`);
+  if(lastD > 35 && !stochasticState.hasRisenAbove35 ){
+    stochasticState.hasRisenAbove35 = true;
+    console.log(`📉 📉 %D Stochastic value rose 35 at ${currentTime} 📉 📉`);
   }
 
-  if(lastD < 20 && stochasticState.hasRisenAbove30){
+  if(lastD < 20 && stochasticState.hasRisenAbove35){
     console.log(`📉 📉 %D Stochastic value dropped below 20 at ${currentTime} 📉 📉`);
     console.log("Stochastic:", lastStochastic);
     console.log("RSI:", lastRSI + "," + lastSecondRSI);
@@ -356,7 +356,7 @@ function checkTradeSignal(stochastic, rsi) {
     stochasticState.hasCrossedBelow20 = false,
     stochasticState.hasRisenAbove35 = false
 
-    const isRSISell = lastRSI < 50 || lastSecondRSI < 50;
+    const isRSISell = lastRSI < 35 || lastSecondRSI < 35;
 
 
     if(isRSISell){
@@ -372,7 +372,7 @@ function checkTradeSignal(stochastic, rsi) {
     if (!isRSISell){
 
         console.log("---------------------------");
-        console.log(`🔴 ❌ RSI value is more than 50`);
+        console.log(`🔴 ❌ RSI value is more than 35`);
         console.log("---------------------------");
         console.log(`REVERSING TO BUY`);
         console.log("---------------------------");
@@ -401,9 +401,9 @@ function checkRSISignal(stochastic, rsi) {
     
       //Conditions for Buy trigger
     
-      if((lastRSI < 55 || lastSecondRSI < 55) &&  !rsiState.holdforBuy){
+      if((lastRSI < 60 || lastSecondRSI < 60) &&  !rsiState.holdforBuy){
         rsiState.holdforBuy = true;
-        console.log(`📉 📉 RSI value dropped below 55 at ${currentTime} 📉 📉`);
+        console.log(`📉 📉 RSI value dropped below 60 at ${currentTime} 📉 📉`);
       }
     
       if((lastRSI > 70 || lastSecondRSI > 70) && rsiState.holdforBuy){
@@ -417,7 +417,7 @@ function checkRSISignal(stochastic, rsi) {
     
     
     
-        if(lastD > 50){
+        if(lastD > 65){
           console.log("---------------------------");
           console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
           console.log("---------------------------\n");
@@ -427,9 +427,9 @@ function checkRSISignal(stochastic, rsi) {
         // Reasons why the BUY signal was not triggered
         let reasons = [];
     
-        if (lastD < 50){
+        if (lastD < 65){
             console.log("---------------------------");
-            console.log(`🟢 ❌ %D value is less than 50`);
+            console.log(`🟢 ❌ %D value is less than 65`);
             console.log("---------------------------");
             console.log(`REVERSING TO SELL`);
             console.log("---------------------------");
@@ -442,9 +442,9 @@ function checkRSISignal(stochastic, rsi) {
     
       //Conditions for Sell trigger
     
-      if((lastRSI > 45 || lastSecondRSI > 45) &&  !rsiState.holdforSell ){
+      if((lastRSI > 40 || lastSecondRSI > 40) &&  !rsiState.holdforSell ){
         rsiState.holdforSell = true;
-        console.log(`📉 📉 RSI value rose above 45 at ${currentTime} 📉 📉`);
+        console.log(`📉 📉 RSI value rose above 40 at ${currentTime} 📉 📉`);
       }
     
       if((lastRSI < 30 || lastSecondRSI < 30) && rsiState.holdforSell){
@@ -455,7 +455,7 @@ function checkRSISignal(stochastic, rsi) {
         rsiState.holdforBuy = false;
         rsiState.holdforSell = false;
     
-        if(lastD < 50){
+        if(lastD < 35){
           console.log("---------------------------");
           console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
           console.log("---------------------------\n");
@@ -465,9 +465,9 @@ function checkRSISignal(stochastic, rsi) {
         // Reasons why the SELL signal was not triggered
         let reasons = [];
     
-        if (lastD > 50){
+        if (lastD > 35){
             console.log("---------------------------");
-            console.log(`🛑 ❌ %D value is more than 50`);
+            console.log(`🛑 ❌ %D value is more than 35`);
             console.log("---------------------------");
             console.log(`REVERSING TO BUY`);
             console.log("---------------------------");

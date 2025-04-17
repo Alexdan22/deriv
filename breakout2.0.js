@@ -8,7 +8,7 @@ const { DateTime } = require('luxon');
 const ti = require('technicalindicators');
 require('dotenv').config();
 
-const API_TOKEN_GOLD_CLONE = process.env.API_TOKEN_GOLD_CLONE ? process.env.API_TOKEN_GOLD_CLONE.split(',') : [];
+const API_TOKEN_GOLD = process.env.API_TOKEN_GOLD ? process.env.API_TOKEN_GOLD.split(',') : [];
 
 const app = express();
 app.use(bodyParser.json());
@@ -63,10 +63,10 @@ async function getAllApiTokens() {
     
     const dbTokenArray = dbTokens.map((doc) => doc.apiToken); 
 
-    return [...API_TOKEN_GOLD_CLONE, ...dbTokenArray]; // Merge .env tokens and DB tokens
+    return [...API_TOKEN_GOLD, ...dbTokenArray]; // Merge .env tokens and DB tokens
   } catch (error) {
     console.error("Error fetching API tokens from DB:", error);
-    return API_TOKEN_GOLD_CLONE;
+    return API_TOKEN_GOLD;
   }
 }
 
@@ -84,15 +84,11 @@ let latestBollingerBands = []; //Array to store the latest 10 Bollinger band val
 // State variables for BUY and SELL condition
 const stochasticState = {
   condition: 0,
-  hasDroppedBelow65: false,
+  hasDroppedBelow70: false,
   hasCrossedAbove80: false,
   hasCrossedBelow20: false,
-  hasRisenAbove35: false
+  hasRisenAbove30: false
 };
-const breakoutSignal = {
-  holdforSell: false,
-  holdforBuy: false
-}
 const rsiState = {
   holdforSell: false,
   holdforBuy: false
@@ -297,20 +293,20 @@ function checkTradeSignal(stochastic, rsi) {
 
   //Conditions for Buy trigger
 
-  if(lastD < 65 &&  !stochasticState.hasDroppedBelow65){
-    stochasticState.hasDroppedBelow65 = true;
-    console.log(`📉 📉 %D Stochastic value dropped below 65 at ${currentTime} 📉 📉`);
+  if(lastD < 70 &&  !stochasticState.hasDroppedBelow70){
+    stochasticState.hasDroppedBelow70 = true;
+    console.log(`📉 📉 %D Stochastic value dropped below 70 at ${currentTime} 📉 📉`);
   }
 
-  if(lastD > 80 && stochasticState.hasDroppedBelow65){
+  if(lastD > 80 && stochasticState.hasDroppedBelow70){
     console.log(`📈 📈 %D Stochastic value crossed above 80 at ${currentTime} 📈 📈`);
     console.log("Stochastic:", lastStochastic);
     console.log("RSI:", lastRSI + "," + lastSecondRSI);
     
-    stochasticState.hasDroppedBelow65 = false,
+    stochasticState.hasDroppedBelow70 = false,
     stochasticState.hasCrossedAbove80 = false,
     stochasticState.hasCrossedBelow20 = false,
-    stochasticState.hasRisenAbove35 = false
+    stochasticState.hasRisenAbove30 = false
     
 
     const isRSIBuy = lastRSI > 50 || lastSecondRSI > 50;
@@ -341,20 +337,20 @@ function checkTradeSignal(stochastic, rsi) {
 
   //Conditions for Sell trigger
 
-  if(lastD > 35 && !stochasticState.hasRisenAbove35 ){
-    stochasticState.hasRisenAbove35 = true;
-    console.log(`📉 📉 %D Stochastic value rose 35 at ${currentTime} 📉 📉`);
+  if(lastD > 30 && !stochasticState.hasRisenAbove30 ){
+    stochasticState.hasRisenAbove30 = true;
+    console.log(`📉 📉 %D Stochastic value rose 30 at ${currentTime} 📉 📉`);
   }
 
-  if(lastD < 20 && stochasticState.hasRisenAbove35){
+  if(lastD < 20 && stochasticState.hasRisenAbove30){
     console.log(`📉 📉 %D Stochastic value dropped below 20 at ${currentTime} 📉 📉`);
     console.log("Stochastic:", lastStochastic);
     console.log("RSI:", lastRSI + "," + lastSecondRSI);
     
-    stochasticState.hasDroppedBelow65 = false,
+    stochasticState.hasDroppedBelow70 = false,
     stochasticState.hasCrossedAbove80 = false,
     stochasticState.hasCrossedBelow20 = false,
-    stochasticState.hasRisenAbove35 = false
+    stochasticState.hasRisenAbove30 = false
 
     const isRSISell = lastRSI < 50 || lastSecondRSI < 50;
 
@@ -401,9 +397,9 @@ function checkRSISignal(stochastic, rsi) {
     
       //Conditions for Buy trigger
     
-      if((lastRSI < 60 || lastSecondRSI < 60) &&  !rsiState.holdforBuy){
+      if((lastRSI < 55 || lastSecondRSI < 55) &&  !rsiState.holdforBuy){
         rsiState.holdforBuy = true;
-        console.log(`📉 📉 RSI value dropped below 60 at ${currentTime} 📉 📉`);
+        console.log(`📉 📉 RSI value dropped below 55 at ${currentTime} 📉 📉`);
       }
     
       if((lastRSI > 70 || lastSecondRSI > 70) && rsiState.holdforBuy){
@@ -417,7 +413,7 @@ function checkRSISignal(stochastic, rsi) {
     
     
     
-        if(lastD > 65){
+        if(lastD > 50){
           console.log("---------------------------");
           console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
           console.log("---------------------------\n");
@@ -427,9 +423,9 @@ function checkRSISignal(stochastic, rsi) {
         // Reasons why the BUY signal was not triggered
         let reasons = [];
     
-        if (lastD < 65){
+        if (lastD < 50){
             console.log("---------------------------");
-            console.log(`🟢 ❌ %D value is less than 65`);
+            console.log(`🟢 ❌ %D value is less than 50`);
             console.log("---------------------------");
             console.log(`REVERSING TO SELL`);
             console.log("---------------------------");
@@ -442,9 +438,9 @@ function checkRSISignal(stochastic, rsi) {
     
       //Conditions for Sell trigger
     
-      if((lastRSI > 40 || lastSecondRSI > 40) &&  !rsiState.holdforSell ){
+      if((lastRSI > 45 || lastSecondRSI > 45) &&  !rsiState.holdforSell ){
         rsiState.holdforSell = true;
-        console.log(`📉 📉 RSI value rose above 40 at ${currentTime} 📉 📉`);
+        console.log(`📉 📉 RSI value rose above 45 at ${currentTime} 📉 📉`);
       }
     
       if((lastRSI < 30 || lastSecondRSI < 30) && rsiState.holdforSell){
@@ -455,7 +451,7 @@ function checkRSISignal(stochastic, rsi) {
         rsiState.holdforBuy = false;
         rsiState.holdforSell = false;
     
-        if(lastD < 35){
+        if(lastD < 50){
           console.log("---------------------------");
           console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
           console.log("---------------------------\n");
@@ -465,9 +461,9 @@ function checkRSISignal(stochastic, rsi) {
         // Reasons why the SELL signal was not triggered
         let reasons = [];
     
-        if (lastD > 35){
+        if (lastD > 50){
             console.log("---------------------------");
-            console.log(`🛑 ❌ %D value is more than 35`);
+            console.log(`🛑 ❌ %D value is more than 50`);
             console.log("---------------------------");
             console.log(`REVERSING TO BUY`);
             console.log("---------------------------");
@@ -479,100 +475,6 @@ function checkRSISignal(stochastic, rsi) {
     
       // Default to HOLD
       return "HOLD";
-}
-
-function checkBreakoutSignal(stochastic, rsi){
-  if (!stochastic?.length) {
-    console.log("Insufficient indicator values for calculation");
-    return "HOLD";
-  }
-  const currentTime = DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss');
-  const lastStochastic = stochastic[stochastic.length - 1];
-  const lastK = lastStochastic.k;
-  const lastD = lastStochastic.d;
-  const lastRSI = rsi[rsi.length - 1];
-  const lastSecondRSI = rsi[rsi.length - 2];
-
-  //Conditions for Buy trigger
-
-  if(lastD < 20 && lastK < 50 && !breakoutSignal.holdforBuy ){
-    breakoutSignal.holdforBuy = true;
-    console.log(`📉 📉 %D Stochastic value crossed below 20 at ${currentTime} 📉 📉`);
-  }
-
-  if(lastK > 50 && breakoutSignal.holdforBuy){
-    console.log(`📈 📈 BREAKOUT -- %K Stochastic value crossed above 50 at ${currentTime} 📈 📈`);
-    console.log("Stochastic:", lastStochastic);
-    console.log("RSI:", lastRSI + "," + lastSecondRSI);
-    breakoutSignal.holdforBuy = false;
-    
-
-    const isRSIBuy = lastRSI < 56 || lastSecondRSI < 56;
-    const isRSIBuyLimit = lastRSI > 40 || lastSecondRSI > 40;
-
-
-    if(lastD < 20 && isRSIBuy && isRSIBuyLimit){
-      console.log("---------------------------");
-      console.log(`🟢 🔰 🟢 BUY Signal Triggered at ${currentTime} 🟢 🔰 🟢`);
-      console.log("---------------------------\n");
-      return "BUY";
-    }
-
-    // Reasons why the BUY signal was not triggered
-    let reasons = [];
-
-    if (!isRSIBuy) reasons.push("RSI value is less than 56");
-    if (!isRSIBuyLimit) reasons.push("RSI value is more than 40");
-    if (lastD > 20) reasons.push("Stochastic %D value is more than 20");
-
-    if (reasons.length > 0) {
-        reasons.forEach(reason => console.log(`🟢 ❌ ${reason}`));
-        console.log(`🟢 ❌ BUY Signal conditions not met at ${currentTime} ❌ 🟢\n`);
-    }
-
-  }
-
-  //Conditions for Sell trigger
-
-  if(lastD > 80 && lastK > 50 && !breakoutSignal.holdforSell ){
-    breakoutSignal.holdforSell = true;
-    console.log(`📈 📈 %D Stochastic value crossed above 80 at ${currentTime} 📈 📈`);
-  }
-
-  if(lastK < 50 && breakoutSignal.holdforSell){
-    console.log(`📈 📈 BREAKOUT -- %K Stochastic value crossed below 50 at ${currentTime} 📈 📈`);
-    console.log("Stochastic:", lastStochastic);
-    console.log("RSI:", lastRSI + "," + lastSecondRSI);
-    breakoutSignal.holdforSell = false;
-    
-
-    const isRSISell = lastRSI > 44 || lastSecondRSI > 44;
-    const isRSISellLimit = lastRSI < 60 || lastSecondRSI < 60;
-
-
-    if(lastD > 80 && isRSISell && isRSISellLimit){
-      console.log("---------------------------");
-      console.log(`🔴 🧧 🔴 SELL Signal Triggered at ${currentTime} 🔴 🧧 🔴`);
-      console.log("---------------------------\n");
-      return "SELL";
-    }
-
-    // Reasons why the SELL signal was not triggered
-    let reasons = [];
-
-    if (!isRSISell) reasons.push("RSI value is more than 44");
-    if (!isRSISellLimit) reasons.push("RSI value is less than 60");
-    if (lastD < 80) reasons.push("Stochastic %D value is less than 80");
-
-    if (reasons.length > 0) {
-        reasons.forEach(reason => console.log(`🛑 ❌ ${reason}`));
-        console.log(`🛑 ❌ SELL Signal conditions not met at ${currentTime} ❌ 🛑\n`);
-    }
-  }
-
-
-  // Default to HOLD
-  return "HOLD";
 }
 
 
@@ -601,35 +503,20 @@ const processMarketData = async () => {
 
   // ✅ Check trade signal using the calculated values
   const call = checkTradeSignal(stochastic, rsi);
-  const breakout = checkBreakoutSignal(stochastic, rsi);
   const rsiCall = checkRSISignal(stochastic, rsi);
 
-  if (breakout !== "HOLD") {
-    // Reset state variables after placing a trade
-    console.log(breakout);
-    breakoutSignal.holdforBuy = false;
-    breakoutSignal.holdforSell = false;
-
-    API_TOKEN_GOLD_CLONE.forEach(accountId => {
-      const ws = wsMap.get(accountId);
-      if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxEURUSD`, call: breakout });
-      } else {
-        console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
-      }
-    });
-  } else if (call !== "HOLD") {
+  if (call !== "HOLD") {
     // Reset state variables after placing a trade
     console.log(call);
-    stochasticState.hasDroppedBelow65 = false;
-    stochasticState.hasRisenAbove35 = false;
+    stochasticState.hasDroppedBelow70 = false;
+    stochasticState.hasRisenAbove30 = false;
     stochasticState.hasCrossedAbove80 = false;
     stochasticState.hasCrossedBelow20 = false;
 
-    API_TOKEN_GOLD_CLONE.forEach(accountId => {
+    API_TOKEN_GOLD.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxEURUSD`, call });
+        placeTrade(ws, accountId, { symbol: `frxEURUSD`, stake: 0.70, call });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
@@ -640,10 +527,10 @@ const processMarketData = async () => {
     rsiState.holdforBuy = false;
     rsiState.holdforSell = false;
 
-    API_TOKEN_GOLD_CLONE.forEach(accountId => {
+    API_TOKEN_GOLD.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxEURUSD`, call: rsiCall });
+        placeTrade(ws, accountId, { symbol: `frxEURUSD`, stake: 0.70, call: rsiCall });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
@@ -655,7 +542,7 @@ const processMarketData = async () => {
 // Function to place trade on WebSocket
 const placeTrade = async (ws, accountId, trade) => {
 
-  if (tradeInProgress) {
+  if (tradeInProgress && trade.martingaleStep === null) {
       console.log("Trade already in progress. Skipping new trade...");
       return;
    }
@@ -677,7 +564,10 @@ const placeTrade = async (ws, accountId, trade) => {
     console.log(`[${accountId}] Balance: ${user.balance}, Stop Loss Condition: ${dynamicStopLoss}`);
 
     if(user.profitThreshold > user.pnl){
-      //Placing Trade
+        
+      if(user.balance > dynamicStopLoss){
+        if (ws.readyState === WebSocket.OPEN) {
+          //Placing Trade
           if (!accountTrades.has(accountId)) {
             accountTrades.set(accountId, new Map());
           }
@@ -685,22 +575,23 @@ const placeTrade = async (ws, accountId, trade) => {
           tradesForAccount.set(tradeId, {
             symbol: trade.symbol,
             call: trade.call,
-            stake: user.stake,
-            martingaleStep: trade.martingaleStep || 0,
-            maxMartingaleSteps: 1,
+            stake: trade.stake,
+            martingaleStep: trade.martingaleStep || 1,
+            maxMartingaleSteps: 8,
             contract_id: null,
             parentTradeId: trade.parentTradeId || null
           });
-        console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${user.stake}`);
-        
-      if(user.balance > dynamicStopLoss){
-        if (ws.readyState === WebSocket.OPEN) {
+          console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${user.stake}`);
+
+          if(trade.martingaleStep === null){
             tradeInProgress = true;
+          }
+
           sendToWebSocket(ws, {
             buy: "1",
-            price: user.stake,
+            price: trade.stake,
             parameters: {
-              amount: user.stake,
+              amount: trade.stake,
               basis: "stake",
               contract_type: trade.call === "BUY" ? "CALL" : "PUT",
               currency: "USD",
@@ -743,41 +634,63 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   const uniqueDate = `${date}-${month}-${year}_${accountId}`;
   const user = await Threshold.findOne({uniqueDate});
 
-  tradeInProgress = false;
 
 
+  // Stake progression steps
+  const stakeSequence = [0.70, 1.45, 3, 6.40, 13.50, 28.50, 60, 127];
+  const currentStakeIndex = stakeSequence.indexOf(trade.stake);
 
   
   const tradesForAccount = accountTrades.get(accountId);
-  if (!tradesForAccount) return;
+  if (!tradesForAccount){
+    console.log(`[${accountId}] No trades found for account`);
+    console.log(`[${accountId}] Contract Details: ${contract}`);
+    return;
+  }
 
-  const trade = tradesForAccount.get(tradeId);
-  if (!trade) return;
+  const trade = tradesForAccount.get(tradeId); // Store the trade in memory first
+
+  if (!trade){
+    console.log(`[${accountId}] Trade not found for ID: ${tradeId}`);
+    console.log(`[${accountId}] Contract Details: ${contract}`);
+    return;
+  }
+
+  if(trade.martingaleStep === 1){
+    tradeInProgress = false;
+  }
+  // Clean up the trade record after saving the data
+  tradesForAccount.delete(tradeId);
+
+
   if (contract.profit < 0) {
     console.log(`[${accountId}] Trade lost, Updating stake`);
-    // 1, 3, 9, 27, || 51.2, 136.50, 364
-    if(trade.stake == 1){
+
+    if (currentStakeIndex >= 0 && currentStakeIndex < stakeSequence.length - 1) {
+      const nextStake = stakeSequence[currentStakeIndex + 1];
+
+      const newTrade = {
+        symbol: trade.symbol,
+        call: trade.call,
+        stake: nextStake,
+        martingaleStep: trade.martingaleStep + 1,
+        maxMartingaleSteps: trade.maxMartingaleSteps,
+        parentTradeId: trade.parentTradeId || tradeId,
+      };
+      // Update the trade with the new stake and martingale step
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 3;
+
       user.save();
-    }else if( trade.stake == 3){
-      user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 9;
-      user.save();
-    }else if (trade.stake == 9){
-      user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 27;
-      user.save();
-    }else if (trade.stake == 27){
-      console.log(`[${accountId}] All Trade lost, Resetting stake`);
-      user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1;
-      user.save();
-    }else{
-      console.log(`[${accountId}] All Trade lost, Resetting stake`);
-      user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1;
-      user.save();
+
+      const newTradeId = placeTrade(newTrade);
+      tradesForAccount.set(newTradeId, {
+        ...newTrade,
+        contract_id: null,
+      });
+
+      console.log(`Martingale step ${newTrade.martingaleStep} placed with stake ${nextStake}`);
+    } else {
+      console.log(`[${trade.symbol}] Max martingale reached or stake not found. Resetting stake.`);
     }
   }else{
     console.log(`[${accountId}] Profit: ${contract.profit}`);
@@ -786,7 +699,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance found, Adding up to balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1;
+      user.stake = 0.7;
       user.balance = newBalance
       user.dynamicBalance = newBalance
       user.save();
@@ -794,13 +707,11 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
       //New highest balance not found, deducting from balance
       const newBalance = user.balance + (user.stake +(contract.profit || 0));
       user.pnl = user.pnl + (contract.profit || 0);
-      user.stake = 1;
+      user.stake = 0.7;
       user.balance = newBalance
       user.save();
     }
   }
-  tradesForAccount.delete(tradeId);
-
 };
 
 // Function to set Profit Threshold for every users
