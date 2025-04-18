@@ -541,8 +541,8 @@ const processMarketData = async () => {
 
 // Function to place trade on WebSocket
 const placeTrade = async (ws, accountId, trade) => {
-
-  if (tradeInProgress && trade.martingaleStep === null) {
+console.log('Martingale step: ', trade.martingaleStep);
+  if (tradeInProgress && (trade.martingaleStep === null || trade.martingaleStep === undefined)) {
       console.log("Trade already in progress. Skipping new trade...");
       return;
    }
