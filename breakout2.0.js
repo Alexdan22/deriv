@@ -581,7 +581,7 @@ const placeTrade = async (ws, accountId, trade) => {
             contract_id: null,
             parentTradeId: trade.parentTradeId || null
           });
-          console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${user.stake}`);
+          console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${trade.stake}`);
 
           if(trade.martingaleStep === null){
             tradeInProgress = true;
@@ -635,6 +635,7 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   const user = await Threshold.findOne({uniqueDate});
 
 
+  const trade = tradesForAccount.get(tradeId); // Store the trade in memory first
 
   // Stake progression steps
   const stakeSequence = [0.70, 1.45, 3, 6.40, 13.50, 28.50, 60, 127];
@@ -648,7 +649,6 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
     return;
   }
 
-  const trade = tradesForAccount.get(tradeId); // Store the trade in memory first
 
   if (!trade){
     console.log(`[${accountId}] Trade not found for ID: ${tradeId}`);
