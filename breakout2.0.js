@@ -516,7 +516,7 @@ const processMarketData = async () => {
     API_TOKEN_GOLD.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxEURUSD`, stake: 0.70, call });
+        placeTrade(ws, accountId, { symbol: `frxEURUSD`, stake: 0.70, martingaleStep:1, call });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
@@ -530,7 +530,7 @@ const processMarketData = async () => {
     API_TOKEN_GOLD.forEach(accountId => {
       const ws = wsMap.get(accountId);
       if (ws?.readyState === WebSocket.OPEN) {
-        placeTrade(ws, accountId, { symbol: `frxEURUSD`, stake: 0.70, call: rsiCall });
+        placeTrade(ws, accountId, { symbol: `frxEURUSD`, stake: 0.70, martingaleStep:1, call: rsiCall });
       } else {
         console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
       }
@@ -541,8 +541,8 @@ const processMarketData = async () => {
 
 // Function to place trade on WebSocket
 const placeTrade = async (ws, accountId, trade) => {
-console.log('Martingale step: ', trade.martingaleStep);
-  if (tradeInProgress && (trade.martingaleStep === null || trade.martingaleStep === undefined)) {
+  console.log('Martingale Step:', trade.martingaleStep);
+  if (tradeInProgress && trade.martingaleStep === 1) {
       console.log("Trade already in progress. Skipping new trade...");
       return;
    }
@@ -583,7 +583,7 @@ console.log('Martingale step: ', trade.martingaleStep);
           });
           console.log(`[${accountId}] Email: ${user.email} Placing trade for ${trade.call} on ${trade.symbol} with stake ${trade.stake}`);
 
-          if(trade.martingaleStep === null){
+          if(trade.martingaleStep === 1){
             tradeInProgress = true;
           }
 
