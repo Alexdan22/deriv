@@ -682,11 +682,12 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
 
       user.save();
 
-      const newTradeId = placeTrade(newTrade);
-      tradesForAccount.set(newTradeId, {
-        ...newTrade,
-        contract_id: null,
-      });
+      const ws = wsMap.get(accountId);
+      if (ws?.readyState === WebSocket.OPEN) {
+        placeTrade(ws, accountId, newTrade);
+      } else {
+        console.error(`[${accountId}] ❌ WebSocket not open, cannot place trade.`);
+      }
 
       console.log(`Martingale step ${newTrade.martingaleStep} placed with stake ${nextStake}`);
     } else {
