@@ -634,13 +634,6 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
   const uniqueDate = `${date}-${month}-${year}_${accountId}`;
   const user = await Threshold.findOne({uniqueDate});
 
-
-  const trade = tradesForAccount.get(tradeId); // Store the trade in memory first
-
-  // Stake progression steps
-  const stakeSequence = [0.70, 1.45, 3, 6.40, 13.50, 28.50, 60, 127];
-  const currentStakeIndex = stakeSequence.indexOf(trade.stake);
-
   
   const tradesForAccount = accountTrades.get(accountId);
   if (!tradesForAccount){
@@ -648,6 +641,13 @@ const handleTradeResult = async (contract, accountId, tradeId) => {
     console.log(`[${accountId}] Contract Details: ${contract}`);
     return;
   }
+
+  const trade = tradesForAccount.get(tradeId); // Store the trade in memory first
+
+  // Stake progression steps
+  const stakeSequence = [0.70, 1.45, 3, 6.40, 13.50, 28.50, 60, 127];
+  const currentStakeIndex = stakeSequence.indexOf(trade.stake);
+
 
 
   if (!trade){
